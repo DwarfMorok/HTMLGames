@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Змейка</title>
+    <style>
+        /* Эта херня центрует игру */
+        body {
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(45deg, #1a1a2e, #16213e);
+            font-family: Arial, sans-serif;
+            color: white;
+        }
+
+        /* Эта херня делает заголовок */
+        h1 {
+            color: #ff6b6b;
+            text-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+            margin-bottom: 10px;
+        }
+
+        /* Эта херня делает игровое поле */
+        #game-board {
+            border: 3px solid #ff6b6b;
+            background: #0a0a1a;
+            box-shadow: 0 0 20px rgba(255, 107, 107, 0.3);
+        }
+
+        /* Эта херня делает панель счета */
+        .info-panel {
+            display: flex;
+            gap: 30px;
+            margin: 20px 0;
+            font-size: 18px;
+        }
+
+        .score {
+            color: #4ecdc4;
+            font-weight: bold;
+        }
+
+        .high-score {
+            color: #ffd166;
+            font-weight: bold;
+        }
+
+        /* Эта херня делает кнопки */
+        button {
+            padding: 12px 25px;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+            margin: 5px;
+        }
+
+        button:hover {
+            background: #ff5252;
+            transform: scale(1.05);
+        }
+
+        /* Эта херня управляет */
+        .controls {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .controls-info {
+            margin-bottom: 10px;
+            opacity: 0.8;
+        }
+
+        /* Эта херня анимирует */
+        @keyframes eatAnimation {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1); }
+        }
+
+        .eating {
+            animation: eatAnimation 0.2s;
+        }
+    </style>
+</head>
+<body>
+    <h1>🐍 Змейка</h1>
+    
+    <div class="info-panel">
+        <div>Счет: <span class="score" id="score">0</span></div>
+        <div>Рекорд: <span class="high-score" id="high-score">0</span></div>
+        <div>Длина: <span class="score" id="length">1</span></div>
+    </div>
+
+    <canvas id="game-board" width="500" height="500"></canvas>
+
+    <div class="controls">
+        <button onclick="startGame()">Старт</button>
+        <button onclick="resetGame()">Новая игра</button>
+        <button onclick="togglePause()">Пауза</button>
+        
+        <div class="controls-info">
+            Управление: ← ↑ → ↓ или WASD<br>
+            Змейка выползает с другой стороны!
+        </div>
+    </div>
+
+    <!-- Эта херня делает звуки -->
+    <audio id="eat-sound" preload="auto">
+        <source src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==" type="audio/wav">
+    </audio>
+
+    <script>
+        // Инициализация
+        const canvas = document.getElementById('game-board');
+        const ctx = canvas.getContext('2d');
+        const cellSize = 10; // 500 / 50 = 10
+        const gridSize = 50;
+        
+        // Cостояние игры
+        let snake = [];
+        let food = {};
+        let direction = 'right';
+        let nextDirection = 'right';
+        let gameInterval = null;
+        let score = 0;
+        let highScore = localStorage.getItem('snakeHighScore') || 0;
+        let isPaused = false;
+        let isGameRunning = false;
+        let snakeColor = '#00ff00';
+        let foodColor = '#ff0000';
+
+        // Эта херня обновляет интерфейс
+        function updateUI() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('high-score').textContent = highScore;
+            document.getElementById('length').textContent = snake.length;
+        }
+
+        // Скинчики
+        function getRandomColor() {
+            const colors = [
+                '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57',
+                '#ff9ff3', '#54a0ff', '#5f27cd', '#00d2d3', '#ff9f43'
+            ];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        // Инициализация
+        function initGame() {
+            snake = [{x: 25, y: 25}];
+            direction = 'right';
+            nextDirection = 'right';
+            score = 0;
+            snakeColor = getRandomColor();
+            foodColor = getRandomColor();
+            generateFood();
+            updateUI();
+            drawGame();
+        }
+
+        // Хавчик
+        function generateFood() {
+            let newFood;
+            let onSnake;
+            
+            do {
+                newFood = {
+                    x: Math.floor(Math.random() * gridSize),
+                    y: Math.floor(Math.random() * gridSize)
+                };
+                
+                onSnake = snake.some(segment => 
+                    segment.x === newFood.x && segment.y === newFood.y
+                );
+            } while (onSnake);
+            
+            food = newFood;
+            foodColor = getRandomColor();
+        }
+
+        // Рисуночек 
+        function drawGame() {
+            ctx.fillStyle = '#0a0a1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#1a1a2e';
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i <= gridSize; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * cellSize, 0);
+                ctx.lineTo(i * cellSize, canvas.height);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.moveTo(0, i * cellSize);
+                ctx.lineTo(canvas.width, i * cellSize);
+                ctx.stroke();
+            }
+            
+            // Градиент
+            snake.forEach((segment, index) => {
+                const alpha = 1 - (index / snake.length) * 0.8;
+                ctx.fillStyle = snakeColor;
+                ctx.globalAlpha = alpha;
+                
+                ctx.fillRect(
+                    segment.x * cellSize,
+                    segment.y * cellSize,
+                    cellSize - 1,
+                    cellSize - 1
+                );
+                
+                if (index === 0) {
+                    ctx.fillStyle = 'white';
+                    ctx.globalAlpha = 1;
+                    
+                    const eyeSize = 2;
+                    let eye1 = {x: 0, y: 0};
+                    let eye2 = {x: 0, y: 0};
+                    
+                    switch(direction) {
+                        case 'right':
+                            eye1 = {x: segment.x * cellSize + cellSize - 3, y: segment.y * cellSize + 3};
+                            eye2 = {x: segment.x * cellSize + cellSize - 3, y: segment.y * cellSize + cellSize - 5};
+                            break;
+                        case 'left':
+                            eye1 = {x: segment.x * cellSize + 3, y: segment.y * cellSize + 3};
+                            eye2 = {x: segment.x * cellSize + 3, y: segment.y * cellSize + cellSize - 5};
+                            break;
+                        case 'up':
+                            eye1 = {x: segment.x * cellSize + 3, y: segment.y * cellSize + 3};
+                            eye2 = {x: segment.x * cellSize + cellSize - 5, y: segment.y * cellSize + 3};
+                            break;
+                        case 'down':
+                            eye1 = {x: segment.x * cellSize + 3, y: segment.y * cellSize + cellSize - 3};
+                            eye2 = {x: segment.x * cellSize + cellSize - 5, y: segment.y * cellSize + cellSize - 3};
+                            break;
+                    }
+                    
+                    ctx.fillRect(eye1.x, eye1.y, eyeSize, eyeSize);
+                    ctx.fillRect(eye2.x, eye2.y, eyeSize, eyeSize);
+                }
+            });
+            
+            ctx.globalAlpha = 1;
+            
+            // Рисуем Хавчик
+            ctx.fillStyle = foodColor;
+            ctx.beginPath();
+            ctx.arc(
+                food.x * cellSize + cellSize / 2,
+                food.y * cellSize + cellSize / 2,
+                cellSize / 2 - 1,
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+            
+            // Пауза
+            if (isPaused) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.fillStyle = 'white';
+                ctx.font = '30px Comic Sans';
+                ctx.textAlign = 'center';
+                ctx.fillText('ПАУЗА', canvas.width / 2, canvas.height / 2);
+                ctx.font = '16px Comic Sans';
+                ctx.fillText('Жми ПРОБЕЛ для продолжения', canvas.width / 2, canvas.height / 2 + 40);
+            }
+        }
+
+        // Движение
+        function moveSnake() {
+            if (isPaused) return;
+            
+            direction = nextDirection;
+            const head = {...snake[0]};
+            
+            switch(direction) {
+                case 'up': head.y--; break;
+                case 'down': head.y++; break;
+                case 'left': head.x--; break;
+                case 'right': head.x++; break;
+            }
+            
+            if (head.x < 0) head.x = gridSize - 1;
+            if (head.x >= gridSize) head.x = 0;
+            if (head.y < 0) head.y = gridSize - 1;
+            if (head.y >= gridSize) head.y = 0;
+            
+            if (snake.some(segment => segment.x === head.x && segment.y === head.y)) {
+                gameOver();
+                return;
+            }
+            
+            snake.unshift(head);
+            
+            // Проверяем поедание хавчик
+            if (head.x === food.x && head.y === food.y) {
+                // Эта херня играет звук хрумок
+                playEatSound();
+                score += 10;
+                if (score > highScore) {
+                    highScore = score;
+                    localStorage.setItem('snakeHighScore', highScore);
+                }
+                generateFood();
+            } else {
+                snake.pop();
+            }
+            
+            updateUI();
+            drawGame();
+        }
+
+        // Эта херня воспроизводит звук хрумок
+        function playEatSound() {
+            const sound = document.getElementById('eat-sound');
+            
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 800;
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.2);
+        }
+
+        // Управдом
+        document.addEventListener('keydown', (e) => {
+            if (!isGameRunning) return;
+            
+            switch(e.key) {
+                case 'ArrowUp':
+                case 'w':
+                case 'W':
+                    if (direction !== 'down') nextDirection = 'up';
+                    e.preventDefault();
+                    break;
+                case 'ArrowDown':
+                case 's':
+                case 'S':
+                    if (direction !== 'up') nextDirection = 'down';
+                    e.preventDefault();
+                    break;
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    if (direction !== 'right') nextDirection = 'left';
+                    e.preventDefault();
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                    if (direction !== 'left') nextDirection = 'right';
+                    e.preventDefault();
+                    break;
+                case ' ':
+                    togglePause();
+                    e.preventDefault();
+                    break;
+            }
+        });
+
+        // Старт тут же скорость этой гниды
+        function startGame() {
+            if (isGameRunning) return;
+            
+            isGameRunning = true;
+            isPaused = false;
+            initGame();
+            
+            if (gameInterval) clearInterval(gameInterval);
+            gameInterval = setInterval(moveSnake, 150);
+        }
+
+        // Паузец
+        function togglePause() {
+            if (!isGameRunning) return;
+            isPaused = !isPaused;
+            drawGame();
+        }
+
+        // Сброс
+        function resetGame() {
+            isGameRunning = false;
+            isPaused = false;
+            if (gameInterval) {
+                clearInterval(gameInterval);
+                gameInterval = null;
+            }
+            initGame();
+        }
+
+        // Конец
+        function gameOver() {
+            isGameRunning = false;
+            clearInterval(gameInterval);
+            
+            setTimeout(() => {
+                alert(`Игра окончена!\nСчет: ${score}\nДлина змейки: ${snake.length}\n\nНовая змейка будет другого цвета!`);
+                resetGame();
+            }, 100);
+        }
+
+        window.onload = function() {
+            updateUI();
+            initGame();
+            drawGame();
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Арканоид</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(45deg, #1a1a2e, #16213e);
+            font-family: Arial, sans-serif;
+            color: white;
+        }
+        h1 {
+            color: #ff6b6b;
+            text-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+            margin-bottom: 10px;
+        }
+        #game-board {
+            border: 3px solid #ff6b6b;
+            background: #0a0a1a;
+            box-shadow: 0 0 20px rgba(255, 107, 107, 0.3);
+        }
+        .info-panel {
+            display: flex;
+            gap: 30px;
+            margin: 20px 0;
+            font-size: 18px;
+        }
+        .score { color: #4ecdc4; font-weight: bold; }
+        .level { color: #ffd166; font-weight: bold; }
+        .balls { color: #ff6b6b; font-weight: bold; }
+        button {
+            padding: 12px 25px;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+            margin: 5px;
+        }
+        button:hover {
+            background: #ff5252;
+            transform: scale(1.05);
+        }
+        .level-select {
+            display: flex;
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .level-btn {
+            padding: 10px 20px;
+            background: #45b7d1;
+        }
+        .level-btn.active {
+            background: #ffd166;
+            color: #1a1a2e;
+        }
+        .upgrades {
+            display: flex;
+            gap: 15px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .upgrade {
+            padding: 8px 15px;
+            background: #96ceb4;
+            color: #1a1a2e;
+            border-radius: 15px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .upgrade.active {
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px;
+            border-radius: 15px;
+            border: 3px solid #ff6b6b;
+            text-align: center;
+            display: none;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎯 Арканоид</h1>
+    
+    <div class="info-panel">
+        <div>Счет: <span class="score" id="score">0</span></div>
+        <div>Уровень: <span class="level" id="level">1</span></div>
+        <div>Шарики: <span class="balls" id="balls">1</span></div>
+        <div>Жизни: <span class="score" id="lives">3</span></div>
+    </div>
+
+    <div class="level-select">
+        <button class="level-btn active" onclick="selectLevel(24)">Легкий (24)</button>
+        <button class="level-btn" onclick="selectLevel(50)">Средний (50)</button>
+        <button class="level-btn" onclick="selectLevel(110)">Хардкор (110)</button>
+    </div>
+
+    <div class="upgrades" id="upgrades"></div>
+
+    <canvas id="game-board" width="800" height="600"></canvas>
+
+    <div>
+        <button onclick="startGame()">Старт</button>
+        <button onclick="resetGame()">Новая игра</button>
+        <button onclick="togglePause()">Пауза</button>
+    </div>
+
+    <div class="message" id="message"></div>
+
+    <script>
+        // Инициализация
+        const canvas = document.getElementById('game-board');
+        const ctx = canvas.getContext('2d');
+
+        // Состояние
+        let gameState = {
+            paddle: { x: canvas.width/2 - 50, y: canvas.height - 30, width: 100, height: 15 },
+            balls: [],
+            bricks: [],
+            score: 0,
+            level: 1,
+            lives: 3,
+            isRunning: false,
+            isPaused: false,
+            selectedLevel: 24,
+            upgrades: [],
+            activeUpgrades: {},
+            musicPlaying: false,
+            lastNoteTime: 0,
+            currentNote: 0
+        };
+
+        // ПоверАпы
+        const UPGRADES = {
+            EXTRA_BALLS: {
+                name: '🔥 +10 шариков',
+                duration: 0,
+                color: '#ff6b6b',
+                chance: 0.1
+            },
+            WIDE_PADDLE: {
+                name: '📏 Широкая платформа',
+                duration: 35000,
+                color: '#4ecdc4',
+                chance: 0.15
+            },
+            RANDOM_SOUND: {
+                name: '🎵 Случайный звук',
+                duration: 0,
+                color: '#ffd166',
+                chance: 0.2
+            },
+            EXPLOSIVE: {
+                name: '💣 KaBOOM',
+                duration: 0,
+                color: '#ff9ff3',
+                chance: 0.08
+            }
+        };
+
+        // Сайндтрек(Я композитор блять)
+        const JINGLE_BELLS = [
+            // Первая фраза: "Jingle bells, jingle bells"
+            { freq: 523.25, duration: 0.3 }, // C5
+            { freq: 523.25, duration: 0.3 }, // C5
+            { freq: 523.25, duration: 0.6 }, // C5
+            { freq: 523.25, duration: 0.3 }, // C5
+            { freq: 523.25, duration: 0.3 }, // C5
+            { freq: 523.25, duration: 0.6 }, // C5
+            
+            // "Jingle all the way"
+            { freq: 523.25, duration: 0.3 }, // C5
+            { freq: 587.33, duration: 0.3 }, // D5
+            { freq: 392.00, duration: 0.3 }, // G4
+            { freq: 440.00, duration: 0.3 }, // A4
+            { freq: 523.25, duration: 0.8 }, // C5
+            
+            // Пауза
+            { freq: 0, duration: 0.2 },
+            
+            // Вторая фраза: "Oh what fun it is to ride"
+            { freq: 493.88, duration: 0.3 }, // B4
+            { freq: 493.88, duration: 0.3 }, // B4
+            { freq: 493.88, duration: 0.3 }, // B4
+            { freq: 493.88, duration: 0.3 }, // B4
+            { freq: 493.88, duration: 0.3 }, // B4
+            { freq: 523.25, duration: 0.3 }, // C5
+            { freq: 523.25, duration: 0.3 }, // C5
+            { freq: 523.25, duration: 0.3 }, // C5
+            { freq: 523.25, duration: 0.3 }, // C5
+            
+            // "In a one horse open sleigh"
+            { freq: 523.25, duration: 0.3 }, // C5
+            { freq: 587.33, duration: 0.3 }, // D5
+            { freq: 587.33, duration: 0.3 }, // D5
+            { freq: 523.25, duration: 0.3 }, // C5
+            { freq: 493.88, duration: 0.3 }, // B4
+            { freq: 440.00, duration: 0.6 }, // A4
+            { freq: 392.00, duration: 0.8 }, // G4
+            
+            // Большая пауза перед повтором
+            { freq: 0, duration: 0.1 }
+        ];
+
+        // Музло
+        function playGameMusic() {
+            if (!gameState.isRunning || gameState.isPaused) return;
+            
+            const currentTime = Date.now() / 1000;
+            
+            if (currentTime >= gameState.lastNoteTime) {
+                const note = JINGLE_BELLS[gameState.currentNote];
+                
+                if (note.freq > 0) {
+                    playNote(note.freq, note.duration);
+                }
+                
+                gameState.currentNote++;
+                gameState.lastNoteTime = currentTime + note.duration;
+                
+                // Цикл мелодии
+                if (gameState.currentNote >= JINGLE_BELLS.length) {
+                    gameState.currentNote = 0;
+                }
+            }
+            
+            requestAnimationFrame(playGameMusic);
+        }
+
+        // Rush E
+        function playNote(frequency, duration) {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = frequency;
+            oscillator.type = 'triangle';
+            
+            gainNode.gain.setValueAtTime(0.08, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration);
+        }
+
+        // Оркестр
+        function playSound(type) {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            switch(type) {
+                case 'brick':
+                    const brickOsc = audioContext.createOscillator();
+                    const brickGain = audioContext.createGain();
+                    brickOsc.connect(brickGain);
+                    brickGain.connect(audioContext.destination);
+                    
+                    brickOsc.frequency.setValueAtTime(300, audioContext.currentTime);
+                    brickOsc.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 0.1);
+                    brickGain.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    brickGain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                    
+                    brickOsc.start(audioContext.currentTime);
+                    brickOsc.stop(audioContext.currentTime + 0.1);
+                    break;
+                    
+                case 'paddle':
+                    const paddleOsc = audioContext.createOscillator();
+                    const paddleGain = audioContext.createGain();
+                    paddleOsc.connect(paddleGain);
+                    paddleGain.connect(audioContext.destination);
+                    
+                    paddleOsc.frequency.setValueAtTime(200, audioContext.currentTime);
+                    paddleGain.gain.setValueAtTime(0.2, audioContext.currentTime);
+                    paddleGain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                    
+                    paddleOsc.start(audioContext.currentTime);
+                    paddleOsc.stop(audioContext.currentTime + 0.1);
+                    break;
+                    
+                case 'upgrade':
+                    for (let i = 0; i < 3; i++) {
+                        const upgradeOsc = audioContext.createOscillator();
+                        const upgradeGain = audioContext.createGain();
+                        upgradeOsc.connect(upgradeGain);
+                        upgradeGain.connect(audioContext.destination);
+                        
+                        upgradeOsc.frequency.setValueAtTime(400 + i * 100, audioContext.currentTime + i * 0.1);
+                        upgradeGain.gain.setValueAtTime(0.2, audioContext.currentTime + i * 0.1);
+                        upgradeGain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + i * 0.1 + 0.1);
+                        
+                        upgradeOsc.start(audioContext.currentTime + i * 0.1);
+                        upgradeOsc.stop(audioContext.currentTime + i * 0.1 + 0.1);
+                    }
+                    break;
+                    
+                case 'win':
+                    
+                    const winNotes = [523.25, 523.25, 523.25, 523.25, 523.25, 523.25, 523.25, 587.33, 659.25];
+                    winNotes.forEach((freq, index) => {
+                        setTimeout(() => {
+                            const winOsc = audioContext.createOscillator();
+                            const winGain = audioContext.createGain();
+                            winOsc.connect(winGain);
+                            winGain.connect(audioContext.destination);
+                            
+                            winOsc.frequency.setValueAtTime(freq, audioContext.currentTime);
+                            winOsc.type = 'triangle';
+                            winGain.gain.setValueAtTime(0.3, audioContext.currentTime);
+                            winGain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                            
+                            winOsc.start(audioContext.currentTime);
+                            winOsc.stop(audioContext.currentTime + 0.3);
+                        }, index * 200);
+                    });
+                    break;
+                    
+                case 'random':
+                    const randomOsc = audioContext.createOscillator();
+                    const randomGain = audioContext.createGain();
+                    randomOsc.connect(randomGain);
+                    randomGain.connect(audioContext.destination);
+                    
+                    randomOsc.frequency.setValueAtTime(150 + Math.random() * 500, audioContext.currentTime);
+                    randomGain.gain.setValueAtTime(0.2, audioContext.currentTime);
+                    randomGain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                    
+                    randomOsc.start(audioContext.currentTime);
+                    randomOsc.stop(audioContext.currentTime + 0.3);
+                    break;
+            }
+        }
+
+        // Генерим уровень
+        function createLevel(brickCount) {
+            gameState.bricks = [];
+            let rows, cols;
+            
+            if (brickCount === 24) {
+                rows = 4; cols = 6;
+            } else if (brickCount === 50) {
+                rows = 5; cols = 10;
+            } else {
+                rows = 10; cols = 11;
+            }
+            
+            const brickWidth = (canvas.width - 20) / cols;
+            const brickHeight = 25;
+            
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    const brick = {
+                        x: col * brickWidth + 10,
+                        y: row * brickHeight + 50,
+                        width: brickWidth - 5,
+                        height: brickHeight - 3,
+                        color: `hsl(${row * 36}, 70%, 60%)`,
+                        hasUpgrade: Math.random() < 0.2,
+                        upgradeType: getRandomUpgradeType(),
+                        health: brickCount === 110 ? 2 : 1
+                    };
+                    gameState.bricks.push(brick);
+                }
+            }
+        }
+
+        // казино ПоверАпов
+        function getRandomUpgradeType() {
+            const rand = Math.random();
+            let cumulative = 0;
+            
+            for (const [key, upgrade] of Object.entries(UPGRADES)) {
+                cumulative += upgrade.chance;
+                if (rand <= cumulative) {
+                    return key;
+                }
+            }
+            
+            return 'RANDOM_SOUND';
+        }
+
+        // я футбольный мячик
+        function createBall() {
+            return {
+                x: canvas.width / 2,
+                y: canvas.height - 50,
+                dx: (Math.random() - 0.5) * 8,
+                dy: -5,
+                radius: 8,
+                speed: 5
+            };
+        }
+
+        // Обнова
+        function updateGame() {
+            if (!gameState.isRunning || gameState.isPaused) return;
+            
+            gameState.balls.forEach((ball, ballIndex) => {
+                ball.x += ball.dx;
+                ball.y += ball.dy;
+                
+                if (ball.x - ball.radius < 0 || ball.x + ball.radius > canvas.width) {
+                    ball.dx = -ball.dx;
+                    playSound('paddle');
+                }
+                if (ball.y - ball.radius < 0) {
+                    ball.dy = -ball.dy;
+                    playSound('paddle');
+                }
+                
+                if (ball.y + ball.radius > canvas.height) {
+                    gameState.balls.splice(ballIndex, 1);
+                    if (gameState.balls.length === 0) {
+                        gameState.lives--;
+                        if (gameState.lives > 0) {
+                            gameState.balls.push(createBall());
+                        } else {
+                            gameOver();
+                        }
+                    }
+                    return;
+                }
+                
+                if (ball.y + ball.radius > gameState.paddle.y && 
+                    ball.x > gameState.paddle.x && 
+                    ball.x < gameState.paddle.x + gameState.paddle.width) {
+                    
+                    const hitPos = (ball.x - gameState.paddle.x) / gameState.paddle.width;
+                    ball.dx = (hitPos - 0.5) * 10;
+                    ball.dy = -Math.abs(ball.dy);
+                    playSound('paddle');
+                }
+                
+                gameState.bricks.forEach((brick, brickIndex) => {
+                    if (ball.x + ball.radius > brick.x && 
+                        ball.x - ball.radius < brick.x + brick.width &&
+                        ball.y + ball.radius > brick.y && 
+                        ball.y - ball.radius < brick.y + brick.height) {
+                        
+                        brick.health--;
+                        
+                        if (brick.health <= 0) {
+                            gameState.bricks.splice(brickIndex, 1);
+                            gameState.score += 10 * gameState.level;
+                            
+                            if (brick.hasUpgrade) {
+                                gameState.upgrades.push({
+                                    x: brick.x + brick.width / 2,
+                                    y: brick.y,
+                                    type: brick.upgradeType,
+                                    width: 20,
+                                    height: 10,
+                                    color: UPGRADES[brick.upgradeType].color,
+                                    dy: 2
+                                });
+                            }
+                            
+                            if (gameState.selectedLevel === 110 && gameState.activeUpgrades.EXPLOSIVE) {
+                                explodeBricks(brick.x, brick.y);
+                            }
+                            
+                            playSound('brick');
+                        }
+                        
+                        const fromLeft = Math.abs(ball.x - brick.x);
+                        const fromRight = Math.abs(ball.x - (brick.x + brick.width));
+                        const fromTop = Math.abs(ball.y - brick.y);
+                        const fromBottom = Math.abs(ball.y - (brick.y + brick.height));
+                        
+                        const min = Math.min(fromLeft, fromRight, fromTop, fromBottom);
+                        
+                        if (min === fromLeft || min === fromRight) {
+                            ball.dx = -ball.dx;
+                        } else {
+                            ball.dy = -ball.dy;
+                        }
+                    }
+                });
+            });
+            
+            gameState.upgrades.forEach((upgrade, index) => {
+                upgrade.y += upgrade.dy;
+                
+                if (upgrade.y + upgrade.height > gameState.paddle.y &&
+                    upgrade.x > gameState.paddle.x &&
+                    upgrade.x < gameState.paddle.x + gameState.paddle.width) {
+                    
+                    activateUpgrade(upgrade.type);
+                    gameState.upgrades.splice(index, 1);
+                    playSound('upgrade');
+                }
+                
+                if (upgrade.y > canvas.height) {
+                    gameState.upgrades.splice(index, 1);
+                }
+            });
+            
+            updateUpgradeTimers();
+            
+            if (gameState.bricks.length === 0) {
+                winGame();
+            }
+            
+            updateUI();
+        }
+
+        // Активация Апов
+        function activateUpgrade(type) {
+            const upgrade = UPGRADES[type];
+            
+            switch(type) {
+                case 'EXTRA_BALLS':
+                    for (let i = 0; i < 10; i++) {
+                        gameState.balls.push(createBall());
+                    }
+                    break;
+                    
+                case 'WIDE_PADDLE':
+                    gameState.activeUpgrades.WIDE_PADDLE = {
+                        endTime: Date.now() + upgrade.duration
+                    };
+                    gameState.paddle.width = 150;
+                    break;
+                    
+                case 'RANDOM_SOUND':
+                    playSound('random');
+                    break;
+                    
+                case 'EXPLOSIVE':
+                    gameState.activeUpgrades.EXPLOSIVE = true;
+                    break;
+            }
+            
+            showMessage(`Активирован: ${upgrade.name}`);
+        }
+
+        // Таймер Апа
+        function updateUpgradeTimers() {
+            const now = Date.now();
+            
+            if (gameState.activeUpgrades.WIDE_PADDLE && now > gameState.activeUpgrades.WIDE_PADDLE.endTime) {
+                delete gameState.activeUpgrades.WIDE_PADDLE;
+                gameState.paddle.width = 100;
+                showMessage('Широкая платформа закончилась!');
+            }
+        }
+
+        // Кабум
+        function explodeBricks(x, y) {
+            const explosionRadius = 80;
+            
+            gameState.bricks = gameState.bricks.filter(brick => {
+                const distance = Math.sqrt((brick.x - x) ** 2 + (brick.y - y) ** 2);
+                if (distance < explosionRadius) {
+                    gameState.score += 15 * gameState.level;
+                    playSound('brick');
+                    return false;
+                }
+                return true;
+            });
+        }
+
+        // Графика
+        function drawGame() {
+            ctx.fillStyle = '#0a0a1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = '#4ecdc4';
+            ctx.fillRect(gameState.paddle.x, gameState.paddle.y, gameState.paddle.width, gameState.paddle.height);
+            
+            ctx.fillStyle = '#ff6b6b';
+            gameState.balls.forEach(ball => {
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            
+            gameState.bricks.forEach(brick => {
+                ctx.fillStyle = brick.color;
+                ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
+                
+                if (brick.hasUpgrade) {
+                    ctx.fillStyle = 'gold';
+                    ctx.beginPath();
+                    ctx.arc(brick.x + brick.width / 2, brick.y + brick.height / 2, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                if (brick.health > 1) {
+                    ctx.fillStyle = 'white';
+                    ctx.font = '12px Arial';
+                    ctx.fillText(brick.health, brick.x + brick.width / 2 - 3, brick.y + brick.height / 2 + 4);
+                }
+            });
+            
+            gameState.upgrades.forEach(upgrade => {
+                ctx.fillStyle = upgrade.color;
+                ctx.fillRect(upgrade.x - upgrade.width / 2, upgrade.y, upgrade.width, upgrade.height);
+            });
+            
+            if (gameState.isPaused) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.fillStyle = 'white';
+                ctx.font = '30px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('ПАУЗА', canvas.width / 2, canvas.height / 2);
+            }
+        }
+
+        // Обнова интера
+        function updateUI() {
+            document.getElementById('score').textContent = gameState.score;
+            document.getElementById('level').textContent = gameState.level;
+            document.getElementById('balls').textContent = gameState.balls.length;
+            document.getElementById('lives').textContent = gameState.lives;
+            
+            const upgradesElement = document.getElementById('upgrades');
+            upgradesElement.innerHTML = '';
+            
+            Object.keys(gameState.activeUpgrades).forEach(upgradeKey => {
+                const upgrade = UPGRADES[upgradeKey];
+                const element = document.createElement('div');
+                element.className = 'upgrade active';
+                element.textContent = upgrade.name;
+                element.style.background = upgrade.color;
+                upgradesElement.appendChild(element);
+            });
+        }
+
+        // Сообы
+        function showMessage(text) {
+            const messageElement = document.getElementById('message');
+            messageElement.textContent = text;
+            messageElement.style.display = 'block';
+            
+            setTimeout(() => {
+                messageElement.style.display = 'none';
+            }, 2000);
+        }
+
+        // Выбор уровня
+        function selectLevel(brickCount) {
+            gameState.selectedLevel = brickCount;
+            
+            document.querySelectorAll('.level-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            if (!gameState.isRunning) {
+                resetGame();
+            }
+        }
+
+        // запуск
+        function startGame() {
+            if (gameState.isRunning) return;
+            
+            gameState.isRunning = true;
+            gameState.isPaused = false;
+            
+            if (gameState.balls.length === 0) {
+                gameState.balls.push(createBall());
+            }
+            
+            if (!gameState.musicPlaying) {
+                gameState.musicPlaying = true;
+                gameState.lastNoteTime = 0;
+                gameState.currentNote = 0;
+                playGameMusic();
+            }
+            
+            gameLoop();
+        }
+
+        // Цикл
+        function gameLoop() {
+            if (!gameState.isRunning) return;
+            
+            updateGame();
+            drawGame();
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Пауза
+        function togglePause() {
+            if (!gameState.isRunning) return;
+            gameState.isPaused = !gameState.isPaused;
+        }
+
+        // Сброс
+        function resetGame() {
+            gameState = {
+                paddle: { x: canvas.width/2 - 50, y: canvas.height - 30, width: 100, height: 15 },
+                balls: [createBall()],
+                bricks: [],
+                score: 0,
+                level: 1,
+                lives: 3,
+                isRunning: false,
+                isPaused: false,
+                selectedLevel: gameState.selectedLevel,
+                upgrades: [],
+                activeUpgrades: {},
+                musicPlaying: gameState.musicPlaying,
+                lastNoteTime: 0,
+                currentNote: 0
+            };
+            
+            createLevel(gameState.selectedLevel);
+            updateUI();
+            drawGame();
+        }
+
+        // Победа
+        function winGame() {
+            gameState.isRunning = false;
+            playSound('win');
+            showMessage('ПОБЕДА! 🎅 Jingle all the way! 🛷');
+            
+            setTimeout(() => {
+                gameState.level++;
+                resetGame();
+                startGame();
+            }, 3000);
+        }
+
+        // Потрачено
+        function gameOver() {
+            gameState.isRunning = false;
+            showMessage('ИГРА ОКОНЧЕНА! Попробуй еще раз!');
+        }
+
+        // Управление
+        canvas.addEventListener('mousemove', (e) => {
+            if (!gameState.isRunning || gameState.isPaused) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            gameState.paddle.x = mouseX - gameState.paddle.width / 2;
+            
+            if (gameState.paddle.x < 0) gameState.paddle.x = 0;
+            if (gameState.paddle.x + gameState.paddle.width > canvas.width) {
+                gameState.paddle.x = canvas.width - gameState.paddle.width;
+            }
+        });
+
+        // Загрузка
+        window.onload = function() {
+            createLevel(gameState.selectedLevel);
+            updateUI();
+            drawGame();
+        };
+    </script>
+</body>
+</html>
