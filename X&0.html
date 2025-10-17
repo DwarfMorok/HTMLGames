@@ -1,0 +1,283 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Крестики-нолики</title>
+    <style>
+        /* Эта херня центрует всю страницу */
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            font-family: Arial, sans-serif;
+        }
+
+        /* Эта херня делает контейнер по центру */
+        .game-container {
+            text-align: center;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        /* Эта херня делает само поле 3x3 */
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 80px);
+            grid-template-rows: repeat(3, 80px);
+            gap: 8px;
+            margin: 20px auto;
+            background: #333;
+            padding: 8px;
+            border-radius: 10px;
+        }
+
+        /* Эта херня делает клетки */
+        .cell {
+            width: 80px;
+            height: 80px;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+
+        .cell:hover {
+            background: #f0f0f0;
+            transform: scale(1.05);
+        }
+
+        /* Эта херня делает крестики красными */
+        .cell.x {
+            color: #e74c3c;
+        }
+
+        /* Эта херня делает нолики синими */
+        .cell.o {
+            color: #3498db;
+        }
+
+        /* Эта херня делает статус игры */
+        .status {
+            font-size: 20px;
+            margin: 15px 0;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        /* Эта херня делает кнопку */
+        button {
+            padding: 12px 25px;
+            font-size: 16px;
+            background: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background: #27ae60;
+            transform: translateY(-2px);
+        }
+
+        /* Эта херня подсвечивает выигрыш */
+        .winning-cell {
+            background: #aaffaa !important;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>Крестики-Нолики</h1>
+        <div class="status" id="status">Твой ход! Ставь крестик</div>
+        
+        <!-- Эта херня рисует поле 3x3 по центру -->
+        <div class="board" id="board">
+            <div class="cell" data-index="0"></div>
+            <div class="cell" data-index="1"></div>
+            <div class="cell" data-index="2"></div>
+            <div class="cell" data-index="3"></div>
+            <div class="cell" data-index="4"></div>
+            <div class="cell" data-index="5"></div>
+            <div class="cell" data-index="6"></div>
+            <div class="cell" data-index="7"></div>
+            <div class="cell" data-index="8"></div>
+        </div>
+        
+        <button onclick="resetGame()">Новая игра</button>
+    </div>
+
+    <script>
+        // Эта херня хранит состояние игры
+        let board = ['', '', '', '', '', '', '', '', ''];
+        let currentPlayer = 'X';
+        let gameActive = true;
+
+        // Эта херня обрабатывает клики по клеткам
+        document.querySelectorAll('.cell').forEach(cell => {
+            cell.addEventListener('click', function() {
+                const index = this.getAttribute('data-index');
+                
+                if (!gameActive || board[index] !== '') return;
+                
+                // Ход человека
+                makeMove(index, 'X');
+                
+                if (checkWinner('X')) {
+                    document.getElementById('status').textContent = 'Ты победил!';
+                    gameActive = false;
+                    highlightWinningCells();
+                    return;
+                }
+                
+                if (isBoardFull()) {
+                    document.getElementById('status').textContent = 'Ничья!';
+                    gameActive = false;
+                    return;
+                }
+                
+                // Ход бота с задержкой
+                setTimeout(botMove, 600);
+            });
+        });
+
+        // Эта херня делает ход
+        function makeMove(index, player) {
+            board[index] = player;
+            const cell = document.querySelector(`.cell[data-index="${index}"]`);
+            cell.textContent = player;
+            cell.classList.add(player.toLowerCase());
+        }
+
+        // Эта херня делает ход бота
+        function botMove() {
+            if (!gameActive) return;
+            
+            let availableMoves = [];
+            for (let i = 0; i < 9; i++) {
+                if (board[i] === '') {
+                    availableMoves.push(i);
+                }
+            }
+            
+            if (availableMoves.length === 0) return;
+            
+            let move;
+            
+            // Эта херня пытается выиграть
+            for (let testMove of availableMoves) {
+                board[testMove] = 'O';
+                if (checkWinner('O')) {
+                    move = testMove;
+                    break;
+                }
+                board[testMove] = '';
+            }
+            
+            // Эта херня блокирует человека
+            if (move === undefined) {
+                for (let testMove of availableMoves) {
+                    board[testMove] = 'X';
+                    if (checkWinner('X')) {
+                        move = testMove;
+                        break;
+                    }
+                    board[testMove] = '';
+                }
+            }
+            
+            // Эта херня ходит в центр если свободен
+            if (move === undefined && board[4] === '') {
+                move = 4;
+            }
+            
+            // Эта херня делает случайный ход
+            if (move === undefined) {
+                move = availableMoves[Math.floor(Math.random() * availableMoves.length)];
+            }
+            
+            makeMove(move, 'O');
+            
+            if (checkWinner('O')) {
+                document.getElementById('status').textContent = 'Бот победил!';
+                gameActive = false;
+                highlightWinningCells();
+            } else if (isBoardFull()) {
+                document.getElementById('status').textContent = 'Ничья!';
+                gameActive = false;
+            } else {
+                document.getElementById('status').textContent = 'Твой ход!';
+            }
+        }
+
+        // Эта херня проверяет победу
+        function checkWinner(player) {
+            const winPatterns = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8], // горизонтали
+                [0, 3, 6], [1, 4, 7], [2, 5, 8], // вертикали
+                [0, 4, 8], [2, 4, 6] // диагонали
+            ];
+            
+            return winPatterns.some(pattern => 
+                pattern.every(index => board[index] === player)
+            );
+        }
+
+        // Эта херня проверяет ничью
+        function isBoardFull() {
+            return board.every(cell => cell !== '');
+        }
+
+        // Эта херня подсвечивает выигрышную комбинацию
+        function highlightWinningCells() {
+            const winPatterns = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8],
+                [0, 3, 6], [1, 4, 7], [2, 5, 8],
+                [0, 4, 8], [2, 4, 6]
+            ];
+            
+            for (let pattern of winPatterns) {
+                if (pattern.every(index => board[index] === 'X') || 
+                    pattern.every(index => board[index] === 'O')) {
+                    pattern.forEach(index => {
+                        const cell = document.querySelector(`.cell[data-index="${index}"]`);
+                        cell.classList.add('winning-cell');
+                    });
+                    break;
+                }
+            }
+        }
+
+        // Эта херня сбрасывает игру
+        function resetGame() {
+            board = ['', '', '', '', '', '', '', '', ''];
+            gameActive = true;
+            document.getElementById('status').textContent = 'Твой ход! Ставь крестик';
+            
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.textContent = '';
+                cell.classList.remove('x', 'o', 'winning-cell');
+            });
+        }
+    </script>
+</body>
+</html>

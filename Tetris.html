@@ -1,0 +1,592 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Тетрис</title>
+    <style>
+        /* Эта херня центрует всю страницу */
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(45deg, #1a1a2e, #16213e);
+            font-family: 'Arial', sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+
+        /* Эта херня делает контейнер игры */
+        .game-container {
+            display: flex;
+            gap: 30px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 0 50px rgba(255, 0, 0, 0.3);
+            border: 2px solid #ff0000;
+        }
+
+        /* Эта херня делает игровое поле */
+        #game-board {
+            width: 300px;
+            height: 600px;
+            background: #0a0a1a;
+            border: 3px solid #ff0000;
+            display: grid;
+            grid-template-rows: repeat(20, 1fr);
+            grid-template-columns: repeat(10, 1fr);
+            gap: 1px;
+        }
+
+        /* Эта херня делает клетки поля */
+        .cell {
+            background: #1a1a2e;
+            border: 1px solid #16213e;
+        }
+
+        /* Эта херня делает панель информации */
+        .info-panel {
+            width: 200px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Эта херня делает блоки с информацией */
+        .info-block {
+            background: #16213e;
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #ff0000;
+        }
+
+        /* Эта херня делает цифры счета */
+        .score {
+            font-size: 32px;
+            font-weight: bold;
+            color: #ff0000;
+            text-shadow: 0 0 10px rgba(255, 0, 0, 0.7);
+        }
+
+        /* Эта херня делает кнопки */
+        button {
+            padding: 12px;
+            background: #ff0000;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background: #cc0000;
+            transform: scale(1.05);
+        }
+
+        /* Эта херня делает следующую фигуру */
+        #next-piece {
+            width: 120px;
+            height: 120px;
+            background: #0a0a1a;
+            border: 2px solid #ff0000;
+            display: grid;
+            grid-template-rows: repeat(4, 1fr);
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1px;
+            margin: 0 auto;
+        }
+
+        /* Эта херня делает элементы управления */
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .controls button {
+            padding: 10px;
+            font-size: 12px;
+        }
+
+        /* Цвета фигур */
+        .i { background: #00ffff !important; border: 1px solid #00cccc; }
+        .o { background: #ffff00 !important; border: 1px solid #cccc00; }
+        .t { background: #ff00ff !important; border: 1px solid #cc00cc; }
+        .s { background: #00ff00 !important; border: 1px solid #00cc00; }
+        .z { background: #ff0000 !important; border: 1px solid #cc0000; }
+        .j { background: #0000ff !important; border: 1px solid #0000cc; }
+        .l { background: #ffa500 !important; border: 1px solid #cc8400; }
+
+        /* Эта херня делает анимацию очистки строк */
+        .clearing {
+            background: white !important;
+            animation: clearLine 0.3s;
+        }
+
+        @keyframes clearLine {
+            0% { background: white; }
+            100% { background: #1a1a2e; }
+        }
+
+        /* Эта херня делает сообщение о паузе */
+        .pause-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px;
+            border-radius: 15px;
+            border: 3px solid #ff0000;
+            text-align: center;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="info-panel">
+            <div class="info-block">
+                <h3>Счет</h3>
+                <div class="score" id="score">0</div>
+            </div>
+            
+            <div class="info-block">
+                <h3>Следующая</h3>
+                <div id="next-piece"></div>
+            </div>
+            
+            <div class="info-block">
+                <h3>Уровень</h3>
+                <div class="score" id="level">1</div>
+            </div>
+            
+            <div class="info-block">
+                <h3>Управление</h3>
+                <div>← → : Движение</div>
+                <div>↑ : Поворот</div>
+                <div>↓ : Ускорить</div>
+                <div>P : Пауза</div>
+            </div>
+            
+            <button onclick="startGame()">Старт</button>
+            <button onclick="pauseGame()">Пауза</button>
+            
+            <div class="controls">
+                <button onclick="moveLeft()">←</button>
+                <button onclick="rotatePiece()">↻</button>
+                <button onclick="moveRight()">→</button>
+                <button onclick="moveDown()" style="grid-column: 1 / -1;">↓ Быстрее!</button>
+            </div>
+        </div>
+        
+        <div id="game-board"></div>
+    </div>
+
+    <div class="pause-overlay" id="pause-overlay">
+        <h2>ПАУЗА</h2>
+        <p>Жми P для продолжения</p>
+        <p>🎸 I Wanna Rock! 🎸</p>
+    </div>
+
+    <!-- Эта херня играет музыку -->
+    <audio id="bg-music" loop>
+        <source src="https://www.soundboard.com/mediafiles/23/231685-9a4c85c3-41dd-4bf4-8df8-13c8e45e4d62.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        // Эта херня хранит всю игру
+        const BOARD_WIDTH = 10;
+        const BOARD_HEIGHT = 20;
+        let board = [];
+        let currentPiece = null;
+        let nextPiece = null;
+        let score = 0;
+        let level = 1;
+        let gameInterval = null;
+        let isPaused = false;
+        let isGameRunning = false;
+
+        // Эта херня определяет все фигуры
+        const PIECES = {
+            i: {
+                shape: [
+                    [0,0,0,0],
+                    [1,1,1,1],
+                    [0,0,0,0],
+                    [0,0,0,0]
+                ],
+                color: 'i'
+            },
+            o: {
+                shape: [
+                    [1,1],
+                    [1,1]
+                ],
+                color: 'o'
+            },
+            t: {
+                shape: [
+                    [0,1,0],
+                    [1,1,1],
+                    [0,0,0]
+                ],
+                color: 't'
+            },
+            s: {
+                shape: [
+                    [0,1,1],
+                    [1,1,0],
+                    [0,0,0]
+                ],
+                color: 's'
+            },
+            z: {
+                shape: [
+                    [1,1,0],
+                    [0,1,1],
+                    [0,0,0]
+                ],
+                color: 'z'
+            },
+            j: {
+                shape: [
+                    [1,0,0],
+                    [1,1,1],
+                    [0,0,0]
+                ],
+                color: 'j'
+            },
+            l: {
+                shape: [
+                    [0,0,1],
+                    [1,1,1],
+                    [0,0,0]
+                ],
+                color: 'l'
+            }
+        };
+
+        // Эта херня инициализирует игру
+        function initGame() {
+            createBoard();
+            generateNewPiece();
+            updateDisplay();
+            drawBoard();
+        }
+
+        // Эта херня создает игровое поле
+        function createBoard() {
+            const gameBoard = document.getElementById('game-board');
+            gameBoard.innerHTML = '';
+            board = [];
+            
+            for (let y = 0; y < BOARD_HEIGHT; y++) {
+                board[y] = [];
+                for (let x = 0; x < BOARD_WIDTH; x++) {
+                    board[y][x] = 0;
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.id = `cell-${x}-${y}`;
+                    gameBoard.appendChild(cell);
+                }
+            }
+        }
+
+        // Эта херня генерирует новую фигуру
+        function generateNewPiece() {
+            if (!nextPiece) {
+                const pieces = Object.keys(PIECES);
+                nextPiece = {
+                    type: pieces[Math.floor(Math.random() * pieces.length)],
+                    x: Math.floor(BOARD_WIDTH / 2) - 1,
+                    y: 0
+                };
+            }
+            
+            currentPiece = nextPiece;
+            const pieces = Object.keys(PIECES);
+            nextPiece = {
+                type: pieces[Math.floor(Math.random() * pieces.length)],
+                x: Math.floor(BOARD_WIDTH / 2) - 1,
+                y: 0
+            };
+            
+            updateNextPieceDisplay();
+        }
+
+        // Эта херня отображает следующую фигуру
+        function updateNextPieceDisplay() {
+            const nextPieceDisplay = document.getElementById('next-piece');
+            nextPieceDisplay.innerHTML = '';
+            
+            const piece = PIECES[nextPiece.type];
+            for (let y = 0; y < piece.shape.length; y++) {
+                for (let x = 0; x < piece.shape[y].length; x++) {
+                    const cell = document.createElement('div');
+                    if (piece.shape[y][x]) {
+                        cell.className = `cell ${piece.color}`;
+                    } else {
+                        cell.className = 'cell';
+                        cell.style.background = '#0a0a1a';
+                    }
+                    nextPieceDisplay.appendChild(cell);
+                }
+            }
+        }
+
+        // Эта херня рисует игровое поле
+        function drawBoard() {
+            // Очищаем поле
+            for (let y = 0; y < BOARD_HEIGHT; y++) {
+                for (let x = 0; x < BOARD_WIDTH; x++) {
+                    const cell = document.getElementById(`cell-${x}-${y}`);
+                    cell.className = 'cell';
+                }
+            }
+            
+            // Рисуем установленные фигуры
+            for (let y = 0; y < BOARD_HEIGHT; y++) {
+                for (let x = 0; x < BOARD_WIDTH; x++) {
+                    if (board[y][x]) {
+                        const cell = document.getElementById(`cell-${x}-${y}`);
+                        cell.className = `cell ${board[y][x]}`;
+                    }
+                }
+            }
+            
+            // Рисуем текущую фигуру
+            if (currentPiece) {
+                const piece = PIECES[currentPiece.type];
+                for (let y = 0; y < piece.shape.length; y++) {
+                    for (let x = 0; x < piece.shape[y].length; x++) {
+                        if (piece.shape[y][x]) {
+                            const boardX = currentPiece.x + x;
+                            const boardY = currentPiece.y + y;
+                            if (boardY >= 0) {
+                                const cell = document.getElementById(`cell-${boardX}-${boardY}`);
+                                cell.className = `cell ${piece.color}`;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Эта херня двигает фигуру вниз
+        function movePieceDown() {
+            if (!currentPiece || isPaused) return;
+            
+            currentPiece.y++;
+            if (checkCollision()) {
+                currentPiece.y--;
+                lockPiece();
+                clearLines();
+                generateNewPiece();
+                if (checkCollision()) {
+                    gameOver();
+                }
+            }
+            drawBoard();
+        }
+
+        // Эта херня двигает фигуру влево
+        function moveLeft() {
+            if (!currentPiece || isPaused) return;
+            
+            currentPiece.x--;
+            if (checkCollision()) {
+                currentPiece.x++;
+            }
+            drawBoard();
+        }
+
+        // Эта херня двигает фигуру вправо
+        function moveRight() {
+            if (!currentPiece || isPaused) return;
+            
+            currentPiece.x++;
+            if (checkCollision()) {
+                currentPiece.x--;
+            }
+            drawBoard();
+        }
+
+        // Эта херня поворачивает фигуру
+        function rotatePiece() {
+            if (!currentPiece || isPaused) return;
+            
+            const piece = PIECES[currentPiece.type];
+            const newShape = [];
+            for (let x = 0; x < piece.shape[0].length; x++) {
+                newShape[x] = [];
+                for (let y = piece.shape.length - 1; y >= 0; y--) {
+                    newShape[x][piece.shape.length - 1 - y] = piece.shape[y][x];
+                }
+            }
+            
+            const oldShape = piece.shape;
+            piece.shape = newShape;
+            if (checkCollision()) {
+                piece.shape = oldShape;
+            }
+            drawBoard();
+        }
+
+        // Эта херня проверяет столкновения
+        function checkCollision() {
+            const piece = PIECES[currentPiece.type];
+            for (let y = 0; y < piece.shape.length; y++) {
+                for (let x = 0; x < piece.shape[y].length; x++) {
+                    if (piece.shape[y][x]) {
+                        const boardX = currentPiece.x + x;
+                        const boardY = currentPiece.y + y;
+                        
+                        if (boardX < 0 || boardX >= BOARD_WIDTH || 
+                            boardY >= BOARD_HEIGHT || 
+                            (boardY >= 0 && board[boardY][boardX])) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        // Эта херня фиксирует фигуру на поле
+        function lockPiece() {
+            const piece = PIECES[currentPiece.type];
+            for (let y = 0; y < piece.shape.length; y++) {
+                for (let x = 0; x < piece.shape[y].length; x++) {
+                    if (piece.shape[y][x]) {
+                        const boardX = currentPiece.x + x;
+                        const boardY = currentPiece.y + y;
+                        if (boardY >= 0) {
+                            board[boardY][boardX] = piece.color;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Эта херня очищает заполненные линии
+        function clearLines() {
+            let linesCleared = 0;
+            
+            for (let y = BOARD_HEIGHT - 1; y >= 0; y--) {
+                if (board[y].every(cell => cell !== 0)) {
+                    // Анимация очистки
+                    for (let x = 0; x < BOARD_WIDTH; x++) {
+                        const cell = document.getElementById(`cell-${x}-${y}`);
+                        cell.classList.add('clearing');
+                    }
+                    
+                    // Удаляем линию
+                    board.splice(y, 1);
+                    board.unshift(Array(BOARD_WIDTH).fill(0));
+                    linesCleared++;
+                    y++; // Проверяем ту же позицию снова
+                }
+            }
+            
+            if (linesCleared > 0) {
+                // Эта херня начисляет очки
+                const points = [0, 100, 300, 500, 800];
+                score += points[linesCleared] * level;
+                level = Math.floor(score / 2000) + 1;
+                updateDisplay();
+                
+                // Обновляем скорость
+                if (gameInterval) {
+                    clearInterval(gameInterval);
+                    gameInterval = setInterval(movePieceDown, 1000 / level);
+                }
+            }
+        }
+
+        // Эта херня обновляет отображение счета
+        function updateDisplay() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('level').textContent = level;
+        }
+
+        // Эта херня запускает игру
+        function startGame() {
+            if (isGameRunning) return;
+            
+            isGameRunning = true;
+            isPaused = false;
+            score = 0;
+            level = 1;
+            createBoard();
+            generateNewPiece();
+            updateDisplay();
+            drawBoard();
+            
+            // Запускаем игровой цикл
+            gameInterval = setInterval(movePieceDown, 1000);
+            
+            // Запускаем музыку
+            const music = document.getElementById('bg-music');
+            music.volume = 0.3;
+            music.play().catch(e => console.log('Эта херня не может играть музыку автономно'));
+            
+            document.getElementById('pause-overlay').style.display = 'none';
+        }
+
+        // Эта херня ставит на паузу
+        function pauseGame() {
+            if (!isGameRunning) return;
+            
+            isPaused = !isPaused;
+            const music = document.getElementById('bg-music');
+            const overlay = document.getElementById('pause-overlay');
+            
+            if (isPaused) {
+                music.pause();
+                overlay.style.display = 'block';
+            } else {
+                music.play();
+                overlay.style.display = 'none';
+            }
+        }
+
+        // Эта херня завершает игру
+        function gameOver() {
+            isGameRunning = false;
+            clearInterval(gameInterval);
+            alert(`Игра окончена! Твой счет: ${score}\n\n🎸 I Wanna Rock and Roll All Night! 🎸`);
+            document.getElementById('bg-music').pause();
+        }
+
+        // Эта херня обрабатывает клавиатуру
+        document.addEventListener('keydown', (e) => {
+            if (!isGameRunning) return;
+            
+            switch(e.key) {
+                case 'ArrowLeft': moveLeft(); break;
+                case 'ArrowRight': moveRight(); break;
+                case 'ArrowDown': moveDown(); break;
+                case 'ArrowUp': rotatePiece(); break;
+                case 'p': case 'P': pauseGame(); break;
+            }
+        });
+
+        // Эта херня ускоряет падение при зажатии
+        function moveDown() {
+            if (!isPaused) {
+                movePieceDown();
+            }
+        }
+
+        // Инициализируем игру при загрузке
+        window.onload = initGame;
+    </script>
+</body>
+</html>
