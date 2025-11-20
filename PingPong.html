@@ -1,0 +1,677 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Пинг-Понг</title>
+    <style>
+        /* центровка*/
+        body {
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(45deg, #1a1a2e, #16213e);
+            font-family: Arial, sans-serif;
+            color: white;
+            overflow: hidden; /* вроде должно убрать ебучий скрол*/
+        }
+
+        /* Заголовок */
+        h1 {
+            color: #ff6b6b;
+            text-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+            margin-bottom: 10px;
+        }
+
+        /* Счёт*/
+        .score-panel {
+            display: flex;
+            justify-content: space-between;
+            width: 800px;
+            margin: 20px 0;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .player-left {
+            color: #4ecdc4;
+        }
+        .player-right {
+            color: #ffd166;
+        }
+
+        /* Кнопки выбора */
+        .mode-select {
+            display: flex;
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .mode-btn {
+            padding: 10px 20px;
+            background: #45b7d1;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+            .mode-btn.active {
+                background: #ffd166;
+                color: #1a1a2e;
+            }
+
+        /* Поле с обводкой */
+        #game-board {
+            border: 3px solid #ff6b6b;
+            background: #0a0a1a;
+            box-shadow: 0 0 20px rgba(255, 107, 107, 0.3);
+        }
+
+        /* Кнопки управления */
+        button {
+            padding: 12px 25px;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+            margin: 5px;
+        }
+
+            button:hover {
+                background: #ff5252;
+                transform: scale(1.05);
+            }
+
+        /* Всплывающий уведом */
+        .message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px;
+            border-radius: 15px;
+            border: 3px solid #ff6b6b;
+            text-align: center;
+            display: none;
+            z-index: 100;
+        }
+
+        /* Показывание управления */
+        .controls {
+            display: flex;
+            gap: 40px;
+            margin-top: 20px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .control-left, .control-right {
+            text-align: center;
+        }
+
+        /* Анимация мигания */
+        @keyframes goalFlash {
+            0% {
+                background: #0a0a1a;
+            }
+
+            50% {
+                background: #ff6b6b;
+            }
+
+            100% {
+                background: #0a0a1a;
+            }
+        }
+
+        .goal-animation {
+            animation: goalFlash 0.5s;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎾 Пинг-Понг</h1>
+
+    <!-- Счет игроков -->
+    <div class="score-panel">
+        <div class="player-left">Игрок 1: <span id="score-left">0</span></div>
+        <div class="player-right">Игрок 2: <span id="score-right">0</span></div>
+    </div>
+
+    <!-- Выбор режима -->
+    <div class="mode-select">
+        <button class="mode-btn active" onclick="selectMode(5)">До 5 голов</button>
+        <button class="mode-btn" onclick="selectMode(15)">До 15 голов</button>
+        <button class="mode-btn" onclick="selectMode(0)">Бесконечный</button>
+    </div>
+
+    <!-- Canvas основа -->
+    <canvas id="game-board" width="800" height="400"></canvas>
+
+    <!-- Подсказки -->
+    <div class="controls">
+        <div class="control-left">
+            <div>Игрок 1 (Слева)</div>
+            <div>W/Ц - Вверх</div>
+            <div>S/Ы - Вниз</div>
+        </div>
+        <div class="control-right">
+            <div>Игрок 2 (Справа)</div>
+            <div>↑ - Вверх</div>
+            <div>↓ - Вниз</div>
+        </div>
+    </div>
+
+    <!-- Управление -->
+    <div>
+        <button onclick="startGame()">Старт</button>
+        <button onclick="resetGame()">Новая игра</button>
+        <button onclick="togglePause()">Пауза</button>
+    </div>
+
+    <!-- Сооб о победе/поражении -->
+    <div class="message" id="message"></div>
+
+    <script>
+        // Контекст рисовки
+        const canvas = document.getElementById('game-board');
+        const ctx = canvas.getContext('2d');
+
+        // Состояние игры
+        let gameState = {
+            // Левая ракетка игрока 
+            leftPaddle: {
+                x: 20,
+                y: canvas.height / 2 - 50,
+                width: 10,
+                height: 100,
+                speed: 6
+            },
+            // Правая ракетка игрока 
+            rightPaddle: {
+                x: canvas.width - 30,
+                y: canvas.height / 2 - 50,
+                width: 10,
+                height: 100,
+                speed: 6
+            },
+            // Мяч с его позицией, размером и скоростью
+            ball: {
+                x: canvas.width / 2,
+                y: canvas.height / 2,
+                radius: 8,
+                dx: 5,  // скорость по X
+                dy: 0   // скорость по Y
+            },
+            scoreLeft: 0,    // Счет левого игрока
+            scoreRight: 0,   // Счет правого игрока
+            isRunning: false, // Идет ли игра сейчас
+            isPaused: false,  // На паузе ли игра
+            gameMode: 5,     // Режим игры: 5, 15 или 0 (бесконечный)
+            gameOver: false, // Закончена ли игра
+            ballActive: true, // Активен ли мяч (false во время анимации гола)
+            musicPlaying: false, // Играет ли фоновая музыка
+            lastNoteTime: 0,  // Время последней ноты музыки
+            currentNote: 0    // Текущая нота в мелодии
+        };
+
+        // Ноты енота
+        const PING_PONG_MELODY = [
+            { freq: 330, duration: 0.1 }, // E
+            { freq: 392, duration: 0.1 }, // G
+            { freq: 494, duration: 0.1 }, // B
+            { freq: 392, duration: 0.1 }, // G
+            { freq: 330, duration: 0.1 }, // E
+            { freq: 0, duration: 0.2 },   // Пауза
+            { freq: 330, duration: 0.1 }, // E
+            { freq: 392, duration: 0.1 }, // G
+            { freq: 494, duration: 0.1 }, // B
+            { freq: 392, duration: 0.1 }, // G
+            { freq: 330, duration: 0.3 }  // E
+        ];
+
+        // Фоновый саунд
+        function playGameMusic() {
+            // Не играет если игра не идет или на паузе
+            if (!gameState.isRunning || gameState.isPaused) return;
+
+            const currentTime = Date.now() / 1000;
+            // Проверка времени для следующей ноты
+            if (currentTime >= gameState.lastNoteTime) {
+                const note = PING_PONG_MELODY[gameState.currentNote];
+                // freq = 0 означает паузу
+                if (note.freq > 0) playNote(note.freq, note.duration);
+                gameState.currentNote++;
+                gameState.lastNoteTime = currentTime + note.duration;
+                // Цикл мелодии
+                if (gameState.currentNote >= PING_PONG_MELODY.length) gameState.currentNote = 0;
+            }
+            // Рекурсивно вызывает себя для следующего кадра
+            requestAnimationFrame(playGameMusic);
+        }
+
+        // Хуярит одну ноту
+        function playNote(frequency, duration) {
+            // Аудиоконтекст для генерации звука
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator(); // Генератор звуковой волны
+            const gainNode = audioContext.createGain();         // Контроллер громкости
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.frequency.value = frequency; // Высота ноты
+            oscillator.type = 'sine';               // Тип волны (синусоида)
+
+            // Снижение громкости
+            gainNode.gain.setValueAtTime(0.05, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration);
+        }
+
+        // Саунд
+        function playSound(type) {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+            switch (type) {
+                case 'paddle': // Звук отскока от ракетки
+                    const osc1 = audioContext.createOscillator();
+                    const gain1 = audioContext.createGain();
+                    osc1.connect(gain1);
+                    gain1.connect(audioContext.destination);
+                    osc1.frequency.setValueAtTime(300, audioContext.currentTime);
+                    gain1.gain.setValueAtTime(0.1, audioContext.currentTime);
+                    gain1.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                    osc1.start(audioContext.currentTime);
+                    osc1.stop(audioContext.currentTime + 0.1);
+                    break;
+
+                case 'wall': // Звук отскока от стены
+                    const osc2 = audioContext.createOscillator();
+                    const gain2 = audioContext.createGain();
+                    osc2.connect(gain2);
+                    gain2.connect(audioContext.destination);
+                    osc2.frequency.setValueAtTime(200, audioContext.currentTime);
+                    gain2.gain.setValueAtTime(0.1, audioContext.currentTime);
+                    gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                    osc2.start(audioContext.currentTime);
+                    osc2.stop(audioContext.currentTime + 0.1);
+                    break;
+
+                case 'goal': // Звук забитого гола
+                    for (let i = 0; i < 3; i++) {
+                        setTimeout(() => {
+                            const osc3 = audioContext.createOscillator();
+                            const gain3 = audioContext.createGain();
+                            osc3.connect(gain3);
+                            gain3.connect(audioContext.destination);
+                            osc3.frequency.setValueAtTime(400 + i * 100, audioContext.currentTime);
+                            gain3.gain.setValueAtTime(0.2, audioContext.currentTime);
+                            gain3.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+                            osc3.start(audioContext.currentTime);
+                            osc3.stop(audioContext.currentTime + 0.2);
+                        }, i * 150); // Каждая следующая нота через 150мс
+                    }
+                    break;
+
+                case 'win': // Победная мелодия
+                    [523.25, 659.25, 783.99, 1046.50, 1318.51].forEach((freq, index) => {
+                        setTimeout(() => {
+                            const osc4 = audioContext.createOscillator();
+                            const gain4 = audioContext.createGain();
+                            osc4.connect(gain4);
+                            gain4.connect(audioContext.destination);
+                            osc4.frequency.setValueAtTime(freq, audioContext.currentTime);
+                            gain4.gain.setValueAtTime(0.3, audioContext.currentTime);
+                            gain4.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                            osc4.start(audioContext.currentTime);
+                            osc4.stop(audioContext.currentTime + 0.3);
+                        }, index * 200); // Каждая нота через 200мс
+                    });
+                    break;
+            }
+        }
+
+        // Эта херня гарантирует что мяч всегда летит с одинаковой скоростью 5
+        function normalizeBallSpeed() {
+            // Вычисляем текущую скорость по теореме Пифагора( нахера-то)
+            const currentSpeed = Math.sqrt(
+                gameState.ball.dx * gameState.ball.dx +
+                gameState.ball.dy * gameState.ball.dy
+            );
+            const targetSpeed = 5;
+
+            // Нормирование скорости
+            if (currentSpeed !== 0) {
+                const ratio = targetSpeed / currentSpeed;
+                gameState.ball.dx *= ratio;
+                gameState.ball.dy *= ratio;
+            }
+        }
+
+        // Иниацилизация
+        function initGame() {
+            // Ставка ракеток
+            gameState.leftPaddle.y = canvas.height / 2 - 50;
+            gameState.rightPaddle.y = canvas.height / 2 - 50;
+
+            // Постановка мяча
+            gameState.ball.x = canvas.width / 2;
+            gameState.ball.y = canvas.height / 2;
+
+            // Случайное начальное направление мяча
+            const direction = Math.random() > 0.5 ? 1 : -1; // Влево Вправо
+            const angle = (Math.random() * 0.8 - 0.4) * Math.PI; // Случайный угол от -72° до +72°
+            gameState.ball.dx = direction * 5 * Math.cos(angle);
+            gameState.ball.dy = 5 * Math.sin(angle);
+
+            normalizeBallSpeed();
+
+            gameState.ballActive = true; // Разблокировка мяча
+            updateUI(); // Обнова счета на экране
+        }
+        function updateGame() {
+            if (!gameState.isRunning || gameState.isPaused || gameState.gameOver) return;
+
+            if (gameState.ballActive) {
+                gameState.ball.x += gameState.ball.dx;
+                gameState.ball.y += gameState.ball.dy;
+
+                // Отскок от верхней и нижней стенки
+                if (gameState.ball.y - gameState.ball.radius < 0 ||
+                    gameState.ball.y + gameState.ball.radius > canvas.height) {
+                    gameState.ball.dy = -gameState.ball.dy;
+                    playSound('wall');
+                }
+
+                // Проверка гола в лев
+                if (gameState.ball.x - gameState.ball.radius < 0) {
+                    gameState.scoreRight++;
+                    scoreGoal('right');
+                    return; 
+                }
+
+                // Проверка гола в прав
+                if (gameState.ball.x + gameState.ball.radius > canvas.width) {
+                    gameState.scoreLeft++;
+                    scoreGoal('left');
+                    return;
+                }
+
+                if (gameState.ball.x - gameState.ball.radius < gameState.leftPaddle.x + gameState.leftPaddle.width &&
+                    gameState.ball.y > gameState.leftPaddle.y &&
+                    gameState.ball.y < gameState.leftPaddle.y + gameState.leftPaddle.height &&
+                    gameState.ball.dx < 0) {
+
+                    // Позиция ракетки относительно мяча
+                    const hitPos = (gameState.ball.y - gameState.leftPaddle.y) / gameState.leftPaddle.height;
+                    gameState.ball.dx = Math.abs(gameState.ball.dx);
+                    gameState.ball.dy = (hitPos - 1) * 1;
+                    normalizeBallSpeed();
+                    playSound('paddle');
+                }
+
+                if (gameState.ball.x + gameState.ball.radius > gameState.rightPaddle.x &&
+                    gameState.ball.y > gameState.rightPaddle.y &&
+                    gameState.ball.y < gameState.rightPaddle.y + gameState.rightPaddle.height &&
+                    gameState.ball.dx > 0) {
+
+                    const hitPos = (gameState.ball.y - gameState.rightPaddle.y) / gameState.rightPaddle.height;
+                    gameState.ball.dx = -Math.abs(gameState.ball.dx);
+                    gameState.ball.dy = (hitPos - 1) * 1;
+                    normalizeBallSpeed();
+                    playSound('paddle');
+                }
+            }
+
+            updateUI();
+        }
+
+        // Обработка ГОЛА
+        function scoreGoal(scorer) {
+            gameState.ballActive = false;
+            playSound('goal');
+
+            // Анимация мигания поля
+            canvas.classList.add('goal-animation');
+            setTimeout(() => canvas.classList.remove('goal-animation'), 500);
+
+            // Проверка условия победы
+            if (gameState.gameMode > 0) {
+                if (gameState.scoreLeft >= gameState.gameMode || gameState.scoreRight >= gameState.gameMode) {
+                    gameOver();
+                    return;
+                }
+            }
+
+            setTimeout(() => {
+                gameState.ballActive = true;
+                initGame();
+                if (gameState.isRunning && !gameState.gameOver) gameLoop();
+            }, 1000);
+
+            updateUI();
+        }
+
+        // Финал игры и победитель
+        function gameOver() {
+            gameState.gameOver = true;
+            gameState.isRunning = false;
+            gameState.ballActive = false;
+            const winner = gameState.scoreLeft > gameState.scoreRight ? 'Игрок 1' : 'Игрок 2';
+            const score = `${gameState.scoreLeft} : ${gameState.scoreRight}`;
+            playSound('win');
+            showMessage(`🎉 ${winner} ПОБЕДИЛ! 🎉\nСчет: ${score}`);
+        }
+
+        // Отрисовка игры
+        function drawGame() {
+            // Фончик
+            ctx.fillStyle = '#0a0a1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Пунктирная линия
+            ctx.setLineDash([5, 15]);
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 0);
+            ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]); // Возрат
+
+            // Рисовка левой ракетки
+            ctx.fillStyle = '#4ecdc4';
+            ctx.fillRect(
+                gameState.leftPaddle.x,
+                gameState.leftPaddle.y,
+                gameState.leftPaddle.width,
+                gameState.leftPaddle.height
+            );
+
+            // Рисовка правой ракетки
+            ctx.fillStyle = '#ffd166';
+            ctx.fillRect(
+                gameState.rightPaddle.x,
+                gameState.rightPaddle.y,
+                gameState.rightPaddle.width,
+                gameState.rightPaddle.height
+            );
+
+            // Рисовка мяча
+            ctx.fillStyle = '#ff6b6b';
+            ctx.beginPath();
+            ctx.arc(gameState.ball.x, gameState.ball.y, gameState.ball.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Рисовка оверлея
+            if (gameState.isPaused) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'white';
+                ctx.font = '30px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('ПАУЗА', canvas.width / 2, canvas.height / 2);
+            }
+        }
+
+        // Счётчик
+        function updateUI() {
+            document.getElementById('score-left').textContent = gameState.scoreLeft;
+            document.getElementById('score-right').textContent = gameState.scoreRight;
+        }
+
+        // Выбор режима
+        function selectMode(mode) {
+            gameState.gameMode = mode;
+
+            // Обновла акт кнопки
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            resetGame(); // Перезапуск нового режима
+        }
+
+        // Запуск игры
+        function startGame() {
+            if (gameState.isRunning) return;
+            gameState.isRunning = true;
+            gameState.isPaused = false;
+            gameState.ballActive = true;
+
+            // Запуск музыки
+            if (!gameState.musicPlaying) {
+                gameState.musicPlaying = true;
+                gameState.lastNoteTime = 0;
+                gameState.currentNote = 0;
+                playGameMusic();
+            }
+            gameLoop(); // Запуск цикла
+        }
+
+        // Эглавный цикл
+        function gameLoop() {
+            if (!gameState.isRunning) return; // Выход при паузе
+            updatePaddles(); // Обнова позиции
+            updateGame();    // Обнова логики
+            drawGame();      // Отрисовка
+            requestAnimationFrame(gameLoop); // Следующий фрэйм
+        }
+
+        // Пауза
+        function togglePause() {
+            if (!gameState.isRunning) return;
+            gameState.isPaused = !gameState.isPaused;
+        }
+
+        // Сброс игры
+        function resetGame() {
+            gameState.isRunning = false;
+            gameState.isPaused = false;
+            gameState.gameOver = false;
+            gameState.ballActive = true;
+            gameState.scoreLeft = 0;
+            gameState.scoreRight = 0;
+            initGame(); // Старт позиции
+        }
+
+        // Всплывающие уведомы
+        function showMessage(text) {
+            const messageElement = document.getElementById('message');
+            messageElement.textContent = text;
+            messageElement.style.display = 'block';
+            setTimeout(() => {
+                messageElement.style.display = 'none';
+            }, 4000); // Авто скрытие уведома через 4 сек
+        }
+
+        // Состояние клавиш
+        const keys = {
+            w: false, 'ц': false,    // Вверх для левого игрока (англ/рус)
+            s: false, 'ы': false,    // Вниз для левого игрока (англ/рус)
+            ArrowUp: false,          // Вверх для правого игрока
+            ArrowDown: false         // Вниз для правого игрока
+        };
+
+        // Обработка нажатия клавиш
+        document.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase(); // нижний регистр
+
+            // Оуправление
+            if (key === 'w') keys.w = true;
+            if (key === 's') keys.s = true;
+            if (key === 'ц') keys['ц'] = true;  
+            if (key === 'ы') keys['ы'] = true;  
+            if (key === 'arrowup') keys.ArrowUp = true;
+            if (key === 'arrowdown') keys.ArrowDown = true;
+
+            // Блок скролинга
+            if (['w', 's', 'ц', 'ы', 'arrowup', 'arrowdown'].includes(key)) {
+                e.preventDefault();
+            }
+        });
+
+        // Обработка отпуска клавиш
+        document.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+
+            // Равнозначные клавиши
+            if (key === 'w') keys.w = false;
+            if (key === 's') keys.s = false;
+            if (key === 'ц') keys['ц'] = false;
+            if (key === 'ы') keys['ы'] = false;
+            if (key === 'arrowup') keys.ArrowUp = false;
+            if (key === 'arrowdown') keys.ArrowDown = false;
+        });
+
+        // Обнова позиция при нажатых клавишах
+        function updatePaddles() {
+            // Не обновляем игру на паузе
+            if (!gameState.isRunning || gameState.isPaused) return;
+
+            // Левая ракетка - вот и баг ебанный. тут была мразь эта цифровая!
+            if ((keys.w || keys['ц']) && gameState.leftPaddle.y > 0) {
+                gameState.leftPaddle.y -= gameState.leftPaddle.speed; 
+            }
+            if ((keys.s || keys['ы']) && gameState.leftPaddle.y + gameState.leftPaddle.height < canvas.height) {
+                gameState.leftPaddle.y += gameState.leftPaddle.speed; 
+            }
+
+            // Правая ракетка
+            if (keys.ArrowUp && gameState.rightPaddle.y > 0) {
+                gameState.rightPaddle.y -= gameState.rightPaddle.speed;
+            }
+            if (keys.ArrowDown && gameState.rightPaddle.y + gameState.rightPaddle.height < canvas.height) {
+                gameState.rightPaddle.y += gameState.rightPaddle.speed;
+            }
+        }
+
+        // Блок прокротки врое...
+        document.addEventListener('wheel', (e) => {
+            e.preventDefault();
+        }, { passive: false });
+
+        // Эта херня блокирует прокрутку на touch-устройствах тоже вроде
+        document.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+        }, { passive: false });
+
+        // Запуск
+        window.onload = initGame;
+    </script>
+</body>
+</html>

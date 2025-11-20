@@ -1,0 +1,1637 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InterestScope | Анализ распространённости интересов</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Modern CSS Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Colors */
+            --primary-50: #f0f9ff;
+            --primary-100: #e0f2fe;
+            --primary-500: #0ea5e9;
+            --primary-600: #0284c7;
+            --primary-700: #0369a1;
+            
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+            
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            
+            /* Typography */
+            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            
+            /* Spacing */
+            --space-xs: 0.5rem;
+            --space-sm: 1rem;
+            --space-md: 1.5rem;
+            --space-lg: 2rem;
+            --space-xl: 3rem;
+            
+            /* Border Radius */
+            --radius-sm: 0.5rem;
+            --radius-md: 0.75rem;
+            --radius-lg: 1rem;
+            
+            /* Shadows */
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Base Styles */
+        body {
+            font-family: var(--font-family);
+            line-height: 1.6;
+            color: var(--gray-800);
+            background: linear-gradient(135deg, var(--gray-50) 0%, var(--gray-100) 100%);
+            min-height: 100vh;
+        }
+
+        .app-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .main-header {
+            background: white;
+            border-bottom: 1px solid var(--gray-200);
+            padding: var(--space-lg) 0;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 var(--space-md);
+            text-align: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-sm);
+            margin-bottom: var(--space-sm);
+        }
+
+        .logo-icon {
+            font-size: 2rem;
+        }
+
+        .logo h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--gray-900);
+        }
+
+        .tagline {
+            color: var(--gray-600);
+            font-size: 1.1rem;
+            font-weight: 400;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: var(--space-xl) var(--space-md);
+            width: 100%;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: var(--space-xl);
+        }
+
+        .section-header h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: var(--space-sm);
+        }
+
+        .section-header p {
+            color: var(--gray-600);
+            font-size: 1.1rem;
+        }
+
+        /* Calculator Card */
+        .calculator-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+            box-shadow: var(--shadow-lg);
+            margin-bottom: var(--space-xl);
+        }
+
+        .input-section {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .input-group {
+            margin-bottom: var(--space-lg);
+        }
+
+        .input-label {
+            display: block;
+            font-weight: 600;
+            color: var(--gray-700);
+            margin-bottom: var(--space-xs);
+            font-size: 0.95rem;
+        }
+
+        .modern-select, .modern-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius-md);
+            font-size: 1rem;
+            transition: all 0.2s ease;
+            background: white;
+        }
+
+        .modern-select:focus, .modern-input:focus {
+            outline: none;
+            border-color: var(--primary-500);
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+        }
+
+        .input-divider {
+            text-align: center;
+            margin: var(--space-lg) 0;
+            position: relative;
+        }
+
+        .input-divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: var(--gray-200);
+        }
+
+        .input-divider span {
+            background: white;
+            padding: 0 var(--space-sm);
+            color: var(--gray-500);
+            font-size: 0.9rem;
+        }
+
+        .input-with-help {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .help-tooltip {
+            position: absolute;
+            right: 1rem;
+            background: var(--gray-200);
+            color: var(--gray-600);
+            width: 1.25rem;
+            height: 1.25rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            cursor: help;
+        }
+
+        /* Buttons */
+        .primary-btn, .secondary-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-xs);
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .primary-btn {
+            background: var(--primary-600);
+            color: white;
+        }
+
+        .primary-btn:hover {
+            background: var(--primary-700);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .secondary-btn {
+            background: white;
+            color: var(--gray-700);
+            border: 2px solid var(--gray-200);
+        }
+
+        .secondary-btn:hover {
+            border-color: var(--primary-500);
+            color: var(--primary-600);
+        }
+
+        .btn-icon {
+            font-size: 1.1rem;
+        }
+
+        .full-width {
+            width: 100%;
+            justify-content: center;
+        }
+
+        /* Quick Estimate */
+        .quick-estimate {
+            margin-top: var(--space-xl);
+            padding-top: var(--space-lg);
+            border-top: 1px solid var(--gray-200);
+            text-align: center;
+        }
+
+        .quick-estimate h3 {
+            margin-bottom: var(--space-sm);
+            color: var(--gray-800);
+        }
+
+        .quick-estimate p {
+            color: var(--gray-600);
+            margin-bottom: var(--space-md);
+        }
+
+        /* Results Section */
+        .results-section {
+            margin-bottom: var(--space-xl);
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-lg);
+        }
+
+        .chart-card, .stats-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .chart-header {
+            margin-bottom: var(--space-md);
+        }
+
+        .chart-header h3 {
+            color: var(--gray-800);
+            font-size: 1.25rem;
+        }
+
+        .chart-container {
+            height: 300px;
+            position: relative;
+        }
+
+        /* Statistics */
+        .statistics {
+            margin-bottom: var(--space-lg);
+        }
+
+        .primary-stat {
+            background: var(--primary-50);
+            border: 1px solid var(--primary-100);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            margin-bottom: var(--space-md);
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-sm) 0;
+            border-bottom: 1px solid var(--gray-100);
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: var(--gray-600);
+            font-size: 0.95rem;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+
+        .primary-stat .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-600);
+        }
+
+        /* Insights Card */
+        .insights-card {
+            background: var(--gray-50);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            border-left: 4px solid var(--primary-500);
+        }
+
+        .insights-card h4 {
+            color: var(--gray-800);
+            margin-bottom: var(--space-sm);
+        }
+
+        .insights-card p {
+            color: var(--gray-600);
+            line-height: 1.6;
+        }
+
+        /* Knowledge Base */
+        .knowledge-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-lg);
+            margin-bottom: var(--space-lg);
+        }
+
+        .category-filter, .search-box {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .category-filter label {
+            margin-bottom: var(--space-xs);
+            font-weight: 600;
+            color: var(--gray-700);
+        }
+
+        .knowledge-stats {
+            text-align: center;
+            margin-bottom: var(--space-lg);
+            color: var(--gray-600);
+            font-size: 0.95rem;
+        }
+
+        .knowledge-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: var(--space-lg);
+        }
+
+        .knowledge-item {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            box-shadow: var(--shadow-md);
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .knowledge-item:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* Category Badges */
+        .category-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: var(--space-sm);
+        }
+
+        .category-body_parts { background: var(--primary-100); color: var(--primary-700); }
+        .category-materials { background: #fef3c7; color: #92400e; }
+        .category-clothing { background: #d1fae5; color: #065f46; }
+        .category-behavioral { background: #e0e7ff; color: #3730a3; }
+        .category-psychological { background: #fce7f3; color: #9d174d; }
+        .category-rare { background: #fef2f2; color: #991b1b; }
+
+        .knowledge-item h3 {
+            color: var(--gray-800);
+            margin-bottom: var(--space-xs);
+        }
+
+        .knowledge-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-sm);
+        }
+
+        .knowledge-prevalence {
+            color: var(--primary-600);
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .research-indicator {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+        }
+
+        .knowledge-item p {
+            color: var(--gray-600);
+            line-height: 1.5;
+            margin-bottom: var(--space-sm);
+        }
+
+        .knowledge-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            color: var(--gray-500);
+        }
+
+        .use-interest-btn {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.8rem;
+        }
+
+        /* Modal */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: var(--space-md);
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-lg);
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--gray-500);
+            padding: 0;
+            width: 2rem;
+            height: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-btn:hover {
+            color: var(--gray-700);
+        }
+
+        .estimator-steps {
+            margin-bottom: var(--space-lg);
+        }
+
+        .step {
+            margin-bottom: var(--space-md);
+        }
+
+        .step-label {
+            display: block;
+            font-weight: 600;
+            color: var(--gray-700);
+            margin-bottom: var(--space-xs);
+        }
+
+        .estimation-results {
+            margin: var(--space-lg) 0;
+        }
+
+        .estimation-card {
+            background: var(--primary-50);
+            border: 1px solid var(--primary-100);
+            border-radius: var(--radius-md);
+            padding: var(--space-lg);
+            text-align: center;
+        }
+
+        .estimation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-md);
+        }
+
+        .confidence-badge {
+            background: var(--success);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .estimation-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary-600);
+            margin-bottom: var(--space-sm);
+        }
+
+        .estimation-explanation {
+            color: var(--gray-600);
+            margin-bottom: var(--space-md);
+            line-height: 1.5;
+        }
+
+        /* Footer */
+        .main-footer {
+            background: var(--gray-800);
+            color: white;
+            padding: var(--space-xl) 0;
+            margin-top: auto;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 var(--space-md);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-xl);
+        }
+
+        .footer-info h3 {
+            margin-bottom: var(--space-sm);
+            color: white;
+        }
+
+        .footer-info p {
+            color: var(--gray-300);
+            line-height: 1.6;
+        }
+
+        .footer-disclaimer p {
+            color: var(--gray-400);
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .database-stats {
+            display: flex;
+            gap: var(--space-lg);
+            margin-top: var(--space-md);
+        }
+
+        .database-stats .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            border: none;
+            padding: 0;
+        }
+
+        .database-stats .stat-number {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-500);
+        }
+
+        .database-stats .stat-label {
+            font-size: 0.85rem;
+            color: var(--gray-400);
+            margin-top: var(--space-xs);
+        }
+
+        /* Utility Classes */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .footer-content {
+                grid-template-columns: 1fr;
+                gap: var(--space-lg);
+            }
+            
+            .calculator-card {
+                padding: var(--space-lg);
+            }
+            
+            .modal-content {
+                padding: var(--space-lg);
+            }
+            
+            .knowledge-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .knowledge-controls {
+                grid-template-columns: 1fr;
+                gap: var(--space-md);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .main-content {
+                padding: var(--space-lg) var(--space-sm);
+            }
+            
+            .section-header h2 {
+                font-size: 1.5rem;
+            }
+            
+            .logo h1 {
+                font-size: 1.5rem;
+            }
+            
+            .tagline {
+                font-size: 1rem;
+            }
+            
+            .database-stats {
+                flex-direction: column;
+                gap: var(--space-sm);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="main-header">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-icon">📊</div>
+                    <h1>InterestScope</h1>
+                </div>
+                <p class="tagline">Научный подход к анализу человеческих интересов</p>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Calculator Section -->
+            <section class="calculator-section">
+                <div class="section-header">
+                    <h2>Анализ распространённости</h2>
+                    <p>Исследуйте статистику различных интересов и предпочтений</p>
+                </div>
+
+                <div class="calculator-card">
+                    <div class="input-section">
+                        <div class="input-group">
+                            <label class="input-label">Выберите интерес для анализа</label>
+                            <select id="interestSelect" class="modern-select">
+                                <option value="">-- Выберите из базы знаний --</option>
+                            </select>
+                        </div>
+
+                        <div class="input-divider">
+                            <span>или</span>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="input-label">Введите свой вариант</label>
+                            <input type="text" id="customInterest" class="modern-input" placeholder="Опишите интерес...">
+                        </div>
+
+                        <div class="prevalence-input">
+                            <label class="input-label">Распространённость (%)</label>
+                            <div class="input-with-help">
+                                <input type="number" id="prevalenceInput" class="modern-input" 
+                                       min="0" max="100" step="0.1" placeholder="0.0">
+                                <div class="help-tooltip" data-tooltip="Процент людей в популяции с данным интересом">
+                                    ?
+                                </div>
+                            </div>
+                        </div>
+
+                        <button id="calculateBtn" class="primary-btn">
+                            <span class="btn-icon">📈</span>
+                            Проанализировать
+                        </button>
+                    </div>
+
+                    <div class="quick-estimate">
+                        <h3>Быстрая оценка</h3>
+                        <p>Не знаете точный процент? Используйте наш алгоритм оценки:</p>
+                        <button id="openEstimatorBtn" class="secondary-btn">
+                            <span class="btn-icon">🎯</span>
+                            Оценить автоматически
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section id="resultsSection" class="results-section hidden">
+                <div class="section-header">
+                    <h2>Результаты анализа</h2>
+                    <p id="interestSubtitle">Статистика выбранного интереса</p>
+                </div>
+
+                <div class="results-grid">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Распределение в популяции</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="prevalenceChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="stats-card">
+                        <div class="statistics">
+                            <div class="stat-item primary-stat">
+                                <div class="stat-label">Распространённость</div>
+                                <div class="stat-value" id="prevalenceResult">0%</div>
+                            </div>
+                            
+                            <div class="stat-group">
+                                <div class="stat-item">
+                                    <div class="stat-label">В России (144 млн)</div>
+                                    <div class="stat-value" id="peopleRussia">0 чел.</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">В мире (8 млрд)</div>
+                                    <div class="stat-value" id="peopleWorld">0 чел.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="insights-card">
+                            <h4>Инсайты</h4>
+                            <p id="interestDescription">Описание и анализ появятся здесь после выбора интереса.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Knowledge Base -->
+            <section class="knowledge-section">
+                <div class="section-header">
+                    <h2>База знаний</h2>
+                    <p>Изучите различные интересы и их распространённость</p>
+                </div>
+
+                <div class="knowledge-controls">
+                    <div class="category-filter">
+                        <label>Фильтр по категориям:</label>
+                        <select id="categoryFilter" class="modern-select">
+                            <option value="all">Все категории</option>
+                            <option value="body_parts">Части тела</option>
+                            <option value="materials">Материалы и текстуры</option>
+                            <option value="clothing">Одежда и обувь</option>
+                            <option value="behavioral">Поведенческие</option>
+                            <option value="psychological">Психологические</option>
+                            <option value="rare">Редкие и специфические</option>
+                        </select>
+                    </div>
+                    <div class="search-box">
+                        <input type="text" id="knowledgeSearch" class="modern-input" placeholder="Поиск по названию или описанию...">
+                    </div>
+                </div>
+
+                <div class="knowledge-stats">
+                    <span id="itemsCount">Найдено 0 интересов</span>
+                </div>
+
+                <div class="knowledge-grid" id="knowledgeBase">
+                    <!-- Knowledge items will be populated by JS -->
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="main-footer">
+            <div class="footer-content">
+                <div class="footer-info">
+                    <h3>InterestScope</h3>
+                    <p>Исследовательская платформа для анализа человеческого поведения и предпочтений</p>
+                    <div class="database-stats">
+                        <div class="stat-item">
+                            <span class="stat-number" id="totalInterests">0</span>
+                            <span class="stat-label">интересов в базе</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number" id="totalCategories">0</span>
+                            <span class="stat-label">категорий</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="footer-disclaimer">
+                    <p><strong>Примечание:</strong> Все данные являются статистическими оценками, основанными на научных исследованиях и социологических опросах. Расчёты выполняются локально в вашем браузере для обеспечения конфиденциальности.</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Estimator Modal -->
+    <div id="estimatorModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Оценка распространённости</h2>
+                <button id="closeModalBtn" class="close-btn">&times;</button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="estimator-steps">
+                    <div class="step">
+                        <label class="step-label">Тип интереса</label>
+                        <select id="interestType" class="modern-select">
+                            <option value="common">Повседневный (одежда, внешность)</option>
+                            <option value="behavioral">Поведенческий (действия, сценарии)</option>
+                            <option value="material">Предметный (объекты, материалы)</option>
+                            <option value="psychological">Психологический (состояния, эмоции)</option>
+                            <option value="rare">Редкий/специфический</option>
+                        </select>
+                    </div>
+
+                    <div class="step">
+                        <label class="step-label">Социальная видимость</label>
+                        <select id="socialVisibility" class="modern-select">
+                            <option value="high">Высокая (открыто обсуждается)</option>
+                            <option value="medium">Средняя (известен, но не массово)</option>
+                            <option value="low">Низкая (в узких кругах)</option>
+                            <option value="very_low">Скрытый (табуирован)</option>
+                        </select>
+                    </div>
+
+                    <div class="step">
+                        <label class="step-label">Сложность реализации</label>
+                        <select id="complexityLevel" class="modern-select">
+                            <option value="easy">Простая (доступна большинству)</option>
+                            <option value="medium">Умеренная (требует условий)</option>
+                            <option value="hard">Сложная (редко достижима)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="estimationResults" class="estimation-results hidden">
+                    <div class="estimation-card">
+                        <div class="estimation-header">
+                            <h3>Результат оценки</h3>
+                            <div class="confidence-badge" id="confidenceBadge">Высокая точность</div>
+                        </div>
+                        <div class="estimation-value" id="estimatedValue">0%</div>
+                        <p class="estimation-explanation" id="estimationExplanation"></p>
+                        <button id="applyEstimationBtn" class="primary-btn">Применить оценку</button>
+                    </div>
+                </div>
+
+                <button id="estimateBtn" class="primary-btn full-width">
+                    <span class="btn-icon">🔍</span>
+                    Рассчитать оценку
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Расширенная база знаний о интересах и предпочтениях
+        const interestsDatabase = [
+            // === КАТЕГОРИЯ: Части тела (Соматофилия) ===
+            {
+                name: "Андрофилия/Гинофилия",
+                prevalence: 95.0,
+                category: "body_parts",
+                description: "Влечение к взрослым людям противоположного или своего пола. Является статистической нормой в человеческой популяции.",
+                researchLevel: "well_studied",
+                culturalAcceptance: "accepted"
+            },
+            {
+                name: "Фетиш на ступни (Podophilia)",
+                prevalence: 10.0,
+                category: "body_parts",
+                description: "Сексуальное влечение к ступням ног. Один из самых распространённых партиализмов. Может включать интерес к пальцам ног, форме стопы, уходу за ногами.",
+                researchLevel: "well_studied",
+                culturalAcceptance: "tolerated"
+            },
+            {
+                name: "Фетиш на кисти рук (Chiroptophilia)",
+                prevalence: 7.0,
+                category: "body_parts",
+                description: "Сексуальный интерес к рукам и пальцам. Включает внимание к форме рук, длине пальцев, ухоженности ногтей.",
+                researchLevel: "partially_studied",
+                culturalAcceptance: "tolerated"
+            },
+            {
+                name: "Фетиш на волосы (Trichophilia)",
+                prevalence: 6.5,
+                category: "body_parts",
+                description: "Сексуальное возбуждение от волос - их цвета, текстуры, длины, запаха. Может распространяться на волосы головы, лобка, других частей тела.",
+                researchLevel: "partially_studied",
+                culturalAcceptance: "tolerated"
+            },
+            {
+                name: "Фетиш на живот (Gastropphilia)",
+                prevalence: 4.0,
+                category: "body_parts",
+                description: "Интерес к животу, пупку. Часто связан с тактильными ощущениями и визуальным восприятием.",
+                researchLevel: "rarely_studied",
+                culturalAcceptance: "tolerated"
+            },
+            {
+                name: "Фетиш на подмышки (Maschalagnia)",
+                prevalence: 3.5,
+                category: "body_parts",
+                description: "Сексуальный интерес к подмышечным впадинам, часто связан с запахом, волосатостью, тактильными ощущениями.",
+                researchLevel: "rarely_studied",
+                culturalAcceptance: "taboo"
+            },
+
+            // === КАТЕГОРИЯ: Материалы и текстуры ===
+            {
+                name: "Фетиш на латекс (Latex fetishism)",
+                prevalence: 5.5,
+                category: "materials",
+                description: "Сексуальное возбуждение от латекса - его блеска, запаха, тактильных ощущений. Часто ассоциируется с БДСМ-культурой.",
+                researchLevel: "partially_studied",
+                culturalAcceptance: "tolerated"
+            },
+            {
+                name: "Фетиш на кожу (Leather fetishism)",
+                prevalence: 4.5,
+                category: "materials",
+                description: "Интерес к кожаной одежде и аксессуарам. Сильно развит в субкультурах байкеров и БДСМ-сообществах.",
+                researchLevel: "partially_studied",
+                culturalAcceptance: "tolerated"
+            },
+            {
+                name: "Фетиш на шёлк (Silk fetishism)",
+                prevalence: 3.0,
+                category: "materials",
+                description: "Возбуждение от прикосновения к шёлку, его гладкости и прохлады. Часто начинается в детстве.",
+                researchLevel: "rarely_studied",
+                culturalAcceptance: "accepted"
+            },
+            {
+                name: "Фетиш на мех (Fur fetishism)",
+                prevalence: 2.5,
+                category: "materials",
+                description: "Сексуальный интерес к меховым изделиям, их текстуре, теплоте, внешнему виду.",
+                researchLevel: "rarely_studied",
+                culturalAcceptance: "tolerated"
+            },
+            {
+                name: "Фетиш на джинсовую ткань",
+                prevalence: 2.0,
+                category: "materials",
+                description: "Интерес к джинсовой ткани, особенно когда она облегает тело. Связан с тактильными и визуальными ощущениями.",
+                researchLevel: "not_studied",
+                culturalAcceptance: "accepted"
+            },
+
+            // === КАТЕГОРИЯ: Одежда и обувь ===
+            {
+                name: "Фетиш на обувь (Shoe fetishism)",
+                prevalence: 6.0,
+                category: "clothing",
+                description: "Один из самых распространённых фетишей. Может включать интерес к туфлям на каблуках, кроссовкам, сапогам.",
+                researchLevel: "partially_studied",
+                culturalAcceptance: "tolerated"
+            },
+            {
+                name: "Фетиш на чулки и колготки",
+                prevalence: 5.0,
+                category: "clothing",
+                description: "Интерес к чулкам, колготкам, их текстуре, внешнему виду на теле. Часто сочетается с другими фетишами.",
+                researchLevel: "partially_studied",
+                culturalAcceptance: "tolerated"
+            },
+            {
+                name: "Фетиш на нижнее бельё",
+                prevalence: 4.5,
+                category: "clothing",
+                description: "Сексуальное возбуждение от нижнего белья - его видов, материалов, внешнего вида на партнёре.",
+                researchLevel: "partially_studied",
+                culturalAcceptance: "tolerated"
+            },
+            {
+                name: "Фетиш на униформу (Uniform fetishism)",
+                prevalence: 3.5,
+                category: "clothing",
+                description: "Интерес к различным видам униформы: медицинской, военной, школьной, офисной.",
+                researchLevel: "rarely_studied",
+                culturalAcceptance: "tolerated"
+            },
+            {
+                name: "Фетиш на высокие каблуки",
+                prevalence: 4.0,
+                category: "clothing",
+                description: "Специфический интерес к обуви на высоких каблуках, часто связан с изменением походки и осанки.",
+                researchLevel: "rarely_studied",
+                culturalAcceptance: "tolerated"
+            },
+
+            // === КАТЕГОРИЯ: Поведенческие и ситуационные ===
+            {
+                name: "БДСМ-практики (умеренные)",
+                prevalence: 15.0,
+                category: "behavioral",
+                description: "Широкий спектр практик, включающих элементы доминирования, подчинения, садомазохизма в consensual форме.",
+                researchLevel: "well_studied",
+                culturalAcceptance: "tolerated"
+            },
+            {
+                name: "Эксгибиционизм (consensual)",
+                prevalence: 4.0,
+                category: "behavioral",
+                description: "Получение удовольствия от демонстрации своего тела с согласия партнёра или в специально отведённых местах.",
+                researchLevel: "partially_studied",
+                culturalAcceptance: "taboo"
+            },
+            {
+                name: "Вуайеризм (consensual)",
+                prevalence: 4.5,
+                category: "behavioral",
+                description: "Наслаждение от наблюдения за другими с их согласия (например, в рамках шоу или специальных клубов).",
+                researchLevel: "partially_studied",
+                culturalAcceptance: "taboo"
+            },
+            {
+                name: "Ролевые игры (Roleplay)",
+                prevalence: 12.0,
+                category: "behavioral",
+                description: "Сексуальные сценарии с исполнением различных ролей: учитель-ученик, врач-пациент и др.",
+                researchLevel: "partially_studied",
+                culturalAcceptance: "tolerated"
+            },
+            {
+                name: "Фетиш на доминирование",
+                prevalence: 8.0,
+                category: "behavioral",
+                description: "Получение сексуального удовлетворения от контроля над партнёром или ситуацией.",
+                researchLevel: "partially_studied",
+                culturalAcceptance: "tolerated"
+            },
+            {
+                name: "Фетиш на подчинение",
+                prevalence: 7.5,
+                category: "behavioral",
+                description: "Удовольствие от передачи контроля партнёру и следования его указаниям.",
+                researchLevel: "partially_studied",
+                culturalAcceptance: "tolerated"
+            },
+
+            // === КАТЕГОРИЯ: Психологические и эмоциональные ===
+            {
+                name: "Эмоциональный мазохизм",
+                prevalence: 6.0,
+                category: "psychological",
+                description: "Получение удовольствия от эмоциональных страданий, унижений или психологического подчинения.",
+                researchLevel: "partially_studied",
+                culturalAcceptance: "taboo"
+            },
+            {
+                name: "Фетиш на интеллект (Sapiosexuality)",
+                prevalence: 9.0,
+                category: "psychological",
+                description: "Сильное сексуальное влечение к интеллекту, уму и ментальным способностям партнёра.",
+                researchLevel: "partially_studied",
+                culturalAcceptance: "accepted"
+            },
+            {
+                name: "Фетиш на голос (Voice fetishism)",
+                prevalence: 5.5,
+                category: "psychological",
+                description: "Сексуальное возбуждение от определённых тембров голоса, акцентов или манеры речи.",
+                researchLevel: "rarely_studied",
+                culturalAcceptance: "tolerated"
+            },
+
+            // === КАТЕГОРИЯ: Редкие и специфические ===
+            {
+                name: "Акротомофилия",
+                prevalence: 0.1,
+                category: "rare",
+                description: "Сексуальное влечение к людям с ампутированными конечностями. Крайне редкое явление.",
+                researchLevel: "rarely_studied",
+                culturalAcceptance: "stigmatized"
+            },
+            {
+                name: "Хремастистофилия",
+                prevalence: 1.0,
+                category: "rare",
+                description: "Сексуальное возбуждение от ограбления или быть ограбленным. Часто реализуется как ролевая игра.",
+                researchLevel: "not_studied",
+                culturalAcceptance: "stigmatized"
+            },
+            {
+                name: "Сомнофилия",
+                prevalence: 2.0,
+                category: "rare",
+                description: "Сексуальное возбуждение от контакта со спящим партнёром. Требует предварительного согласия.",
+                researchLevel: "rarely_studied",
+                culturalAcceptance: "taboo"
+            },
+            {
+                name: "Фетиш на вес (Gravitation fetish)",
+                prevalence: 1.5,
+                category: "rare",
+                description: "Интерес к изменению веса тела - как набору, так и снижению. Может быть связан с кормлением.",
+                researchLevel: "not_studied",
+                culturalAcceptance: "taboo"
+            },
+            {
+                name: "Фетиш на татуировки и пирсинг",
+                prevalence: 4.0,
+                category: "rare",
+                description: "Сексуальный интерес к украшению тела через татуировки, пирсинг, другие модификации.",
+                researchLevel: "rarely_studied",
+                culturalAcceptance: "tolerated"
+            }
+        ];
+
+        // Категории для фильтрации
+        const categories = {
+            'all': 'Все категории',
+            'body_parts': 'Части тела',
+            'materials': 'Материалы и текстуры',
+            'clothing': 'Одежда и обувь',
+            'behavioral': 'Поведенческие',
+            'psychological': 'Психологические',
+            'rare': 'Редкие и специфические'
+        };
+
+        // Элементы DOM
+        const elements = {
+            interestSelect: document.getElementById('interestSelect'),
+            customInterest: document.getElementById('customInterest'),
+            prevalenceInput: document.getElementById('prevalenceInput'),
+            calculateBtn: document.getElementById('calculateBtn'),
+            resultsSection: document.getElementById('resultsSection'),
+            interestSubtitle: document.getElementById('interestSubtitle'),
+            prevalenceResult: document.getElementById('prevalenceResult'),
+            peopleRussia: document.getElementById('peopleRussia'),
+            peopleWorld: document.getElementById('peopleWorld'),
+            interestDescription: document.getElementById('interestDescription'),
+            knowledgeBase: document.getElementById('knowledgeBase'),
+            openEstimatorBtn: document.getElementById('openEstimatorBtn'),
+            estimatorModal: document.getElementById('estimatorModal'),
+            closeModalBtn: document.getElementById('closeModalBtn'),
+            estimateBtn: document.getElementById('estimateBtn'),
+            estimationResults: document.getElementById('estimationResults'),
+            estimatedValue: document.getElementById('estimatedValue'),
+            estimationExplanation: document.getElementById('estimationExplanation'),
+            applyEstimationBtn: document.getElementById('applyEstimationBtn'),
+            confidenceBadge: document.getElementById('confidenceBadge'),
+            categoryFilter: document.getElementById('categoryFilter'),
+            knowledgeSearch: document.getElementById('knowledgeSearch'),
+            itemsCount: document.getElementById('itemsCount'),
+            totalInterests: document.getElementById('totalInterests'),
+            totalCategories: document.getElementById('totalCategories')
+        };
+
+        // Правила для оценщика
+        const estimationRules = {
+            interestType: {
+                'common': { base: 12, weight: 0.3 },
+                'behavioral': { base: 6, weight: 0.25 },
+                'material': { base: 8, weight: 0.2 },
+                'psychological': { base: 4, weight: 0.15 },
+                'rare': { base: 0.8, weight: 0.1 }
+            },
+            socialVisibility: {
+                'high': { multiplier: 1.5, confidence: 0.8 },
+                'medium': { multiplier: 1.0, confidence: 0.6 },
+                'low': { multiplier: 0.6, confidence: 0.4 },
+                'very_low': { multiplier: 0.3, confidence: 0.2 }
+            },
+            complexityLevel: {
+                'easy': { multiplier: 1.4 },
+                'medium': { multiplier: 1.0 },
+                'hard': { multiplier: 0.5 }
+            }
+        };
+
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+        });
+
+        function initializeApp() {
+            populateInterestDropdown();
+            populateKnowledgeBase();
+            setupEventListeners();
+            displayDatabaseStats();
+        }
+
+        function populateInterestDropdown() {
+            interestsDatabase.forEach(interest => {
+                const option = document.createElement('option');
+                option.value = interest.name;
+                option.textContent = `${interest.name} (${interest.prevalence}%)`;
+                elements.interestSelect.appendChild(option);
+            });
+        }
+
+        function populateKnowledgeBase() {
+            filterAndDisplayKnowledge();
+            setupFilters();
+        }
+
+        function setupFilters() {
+            const categoryFilter = document.getElementById('categoryFilter');
+            const knowledgeSearch = document.getElementById('knowledgeSearch');
+            
+            categoryFilter.addEventListener('change', filterAndDisplayKnowledge);
+            knowledgeSearch.addEventListener('input', filterAndDisplayKnowledge);
+        }
+
+        function filterAndDisplayKnowledge() {
+            const categoryFilter = document.getElementById('categoryFilter');
+            const knowledgeSearch = document.getElementById('knowledgeSearch');
+            const itemsCount = document.getElementById('itemsCount');
+            
+            const selectedCategory = categoryFilter.value;
+            const searchTerm = knowledgeSearch.value.toLowerCase();
+            
+            // Фильтруем массив
+            let filteredItems = interestsDatabase;
+            
+            // Применяем фильтр категории
+            if (selectedCategory !== 'all') {
+                filteredItems = filteredItems.filter(item => item.category === selectedCategory);
+            }
+            
+            // Применяем поиск
+            if (searchTerm) {
+                filteredItems = filteredItems.filter(item => 
+                    item.name.toLowerCase().includes(searchTerm) ||
+                    item.description.toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            // Очищаем контейнер
+            elements.knowledgeBase.innerHTML = '';
+            
+            // Добавляем отфильтрованные элементы
+            filteredItems.forEach(interest => {
+                const knowledgeItem = createKnowledgeItem(interest);
+                elements.knowledgeBase.appendChild(knowledgeItem);
+            });
+            
+            // Обновляем счётчик
+            itemsCount.textContent = `Найдено ${filteredItems.length} интересов`;
+        }
+
+        function createKnowledgeItem(interest) {
+            const knowledgeItem = document.createElement('div');
+            knowledgeItem.className = 'knowledge-item';
+            
+            const researchText = getResearchText(interest.researchLevel);
+            const acceptanceText = getAcceptanceText(interest.culturalAcceptance);
+            
+            knowledgeItem.innerHTML = `
+                <div class="category-badge category-${interest.category}">
+                    ${categories[interest.category]}
+                </div>
+                <h3>${interest.name}</h3>
+                <div class="knowledge-meta">
+                    <div class="knowledge-prevalence">${interest.prevalence}% населения</div>
+                    <div class="research-indicator">${researchText}</div>
+                </div>
+                <p>${interest.description}</p>
+                <div class="knowledge-footer">
+                    <span>${acceptanceText}</span>
+                    <button class="use-interest-btn secondary-btn">Использовать</button>
+                </div>
+            `;
+            
+            // Обработчик клика на кнопку "Использовать"
+            const useButton = knowledgeItem.querySelector('.use-interest-btn');
+            useButton.addEventListener('click', (e) => {
+                e.stopPropagation();
+                useInterestInCalculator(interest);
+            });
+            
+            // Обработчик клика на всю карточку
+            knowledgeItem.addEventListener('click', () => {
+                useInterestInCalculator(interest);
+            });
+            
+            return knowledgeItem;
+        }
+
+        function useInterestInCalculator(interest) {
+            elements.interestSelect.value = interest.name;
+            elements.prevalenceInput.value = interest.prevalence;
+            elements.customInterest.value = '';
+            calculateResults();
+            
+            // Прокручиваем к калькулятору
+            document.querySelector('.calculator-section').scrollIntoView({ 
+                behavior: 'smooth' 
+            });
+        }
+
+        // Вспомогательные функции для текстов
+        function getResearchText(level) {
+            const researchMap = {
+                'well_studied': 'Хорошо изучен',
+                'partially_studied': 'Частично изучен',
+                'rarely_studied': 'Мало исследований',
+                'not_studied': 'Не изучен'
+            };
+            return researchMap[level] || 'Неизвестно';
+        }
+
+        function getAcceptanceText(acceptance) {
+            const acceptanceMap = {
+                'accepted': 'Социально приемлем',
+                'tolerated': 'Терпимый',
+                'taboo': 'Табуирован',
+                'stigmatized': 'Стигматизирован'
+            };
+            return acceptanceMap[acceptance] || 'Неизвестно';
+        }
+
+        function displayDatabaseStats() {
+            const totalInterests = document.getElementById('totalInterests');
+            const totalCategories = document.getElementById('totalCategories');
+            
+            totalInterests.textContent = interestsDatabase.length;
+            totalCategories.textContent = Object.keys(categories).length - 1; // minus 'all'
+        }
+
+        function setupEventListeners() {
+            // Основной калькулятор
+            elements.calculateBtn.addEventListener('click', calculateResults);
+            
+            // Оценщик
+            elements.openEstimatorBtn.addEventListener('click', openEstimator);
+            elements.closeModalBtn.addEventListener('click', closeEstimator);
+            elements.estimateBtn.addEventListener('click', calculateEstimation);
+            elements.applyEstimationBtn.addEventListener('click', applyEstimation);
+            
+            // Выбор из списка
+            elements.interestSelect.addEventListener('change', function() {
+                if (this.value) {
+                    const selectedInterest = interestsDatabase.find(interest => interest.name === this.value);
+                    if (selectedInterest) {
+                        elements.prevalenceInput.value = selectedInterest.prevalence;
+                        elements.customInterest.value = '';
+                    }
+                }
+            });
+            
+            // Ввод своего варианта
+            elements.customInterest.addEventListener('input', function() {
+                if (this.value) {
+                    elements.interestSelect.value = '';
+                }
+            });
+            
+            // Закрытие модального окна по клику вне его
+            elements.estimatorModal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeEstimator();
+                }
+            });
+        }
+
+        function calculateResults() {
+            let interestName, prevalenceValue, description;
+
+            // Определяем имя интереса
+            if (elements.customInterest.value.trim() !== '') {
+                interestName = elements.customInterest.value.trim();
+                description = "Пользовательский интерес. Данные о распространённости основаны на вашем вводе.";
+            } else if (elements.interestSelect.value) {
+                const selectedInterest = interestsDatabase.find(interest => interest.name === elements.interestSelect.value);
+                interestName = selectedInterest.name;
+                description = selectedInterest.description;
+                prevalenceValue = selectedInterest.prevalence;
+            } else {
+                showError("Пожалуйста, выберите интерес из списка или введите свой вариант.");
+                return;
+            }
+
+            // Определяем распространенность
+            if (elements.prevalenceInput.value && !isNaN(parseFloat(elements.prevalenceInput.value))) {
+                prevalenceValue = parseFloat(elements.prevalenceInput.value);
+            } else if (!prevalenceValue) {
+                showError("Пожалуйста, укажите распространённость интереса в процентах.");
+                return;
+            }
+
+            // Проверка корректности процента
+            if (prevalenceValue < 0 || prevalenceValue > 100) {
+                showError("Распространённость должна быть в диапазоне от 0 до 100%.");
+                return;
+            }
+
+            // Выполняем расчеты
+            displayResults(interestName, prevalenceValue, description);
+        }
+
+        function displayResults(interestName, prevalence, description) {
+            const populationRussia = 144000000;
+            const populationWorld = 8000000000;
+
+            const peopleInRussia = Math.round(populationRussia * prevalence / 100);
+            const peopleInWorld = Math.round(populationWorld * prevalence / 100);
+
+            // Обновляем UI
+            elements.interestSubtitle.textContent = `Анализ: ${interestName}`;
+            elements.prevalenceResult.textContent = `${prevalence.toFixed(2)}%`;
+            elements.peopleRussia.textContent = `${formatNumber(peopleInRussia)} чел.`;
+            elements.peopleWorld.textContent = `${formatNumber(peopleInWorld)} чел.`;
+            elements.interestDescription.textContent = description;
+
+            // Показываем результаты
+            elements.resultsSection.classList.remove('hidden');
+            
+            // Строим график
+            renderChart(prevalence, interestName);
+            
+            // Прокручиваем к результатам
+            elements.resultsSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function renderChart(prevalence, interestName) {
+            const ctx = document.getElementById('prevalenceChart').getContext('2d');
+
+            // Уничтожаем предыдущий график
+            if (window.prevalenceChartInstance) {
+                window.prevalenceChartInstance.destroy();
+            }
+
+            window.prevalenceChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: [interestName, 'Остальное население'],
+                    datasets: [{
+                        data: [prevalence, 100 - prevalence],
+                        backgroundColor: ['#0ea5e9', '#e5e7eb'],
+                        borderWidth: 0,
+                        hoverOffset: 15
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '60%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true
+                            }
+                        }
+                    },
+                    animation: {
+                        animateScale: true,
+                        animateRotate: true
+                    }
+                }
+            });
+        }
+
+        function openEstimator() {
+            elements.estimatorModal.classList.remove('hidden');
+            elements.estimationResults.classList.add('hidden');
+        }
+
+        function closeEstimator() {
+            elements.estimatorModal.classList.add('hidden');
+        }
+
+        function calculateEstimation() {
+            const interestType = document.getElementById('interestType').value;
+            const socialVisibility = document.getElementById('socialVisibility').value;
+            const complexityLevel = document.getElementById('complexityLevel').value;
+
+            // Расчет оценки
+            let basePrevalence = estimationRules.interestType[interestType].base;
+            let prevalence = basePrevalence * 
+                            estimationRules.socialVisibility[socialVisibility].multiplier * 
+                            estimationRules.complexityLevel[complexityLevel].multiplier;
+
+            // Ограничиваем диапазон
+            prevalence = Math.max(0.1, Math.min(30, prevalence));
+
+            // Рассчитываем уверенность
+            const confidence = estimationRules.socialVisibility[socialVisibility].confidence;
+
+            // Показываем результаты
+            showEstimationResults(prevalence, confidence);
+        }
+
+        function showEstimationResults(prevalence, confidence) {
+            elements.estimatedValue.textContent = `${prevalence.toFixed(2)}%`;
+            
+            // Устанавливаем уровень уверенности
+            let confidenceText, confidenceColor;
+            if (confidence >= 0.7) {
+                confidenceText = 'Высокая точность';
+                confidenceColor = '#10b981';
+            } else if (confidence >= 0.5) {
+                confidenceText = 'Средняя точность';
+                confidenceColor = '#f59e0b';
+            } else {
+                confidenceText = 'Низкая точность';
+                confidenceColor = '#ef4444';
+            }
+            
+            elements.confidenceBadge.textContent = confidenceText;
+            elements.confidenceBadge.style.background = confidenceColor;
+            
+            // Генерируем объяснение
+            elements.estimationExplanation.textContent = 
+                `Оценка основана на выбранных параметрах: тип интереса, социальная видимость и сложность реализации. ` +
+                `Уровень уверенности: ${Math.round(confidence * 100)}%.`;
+            
+            elements.estimationResults.classList.remove('hidden');
+            
+            // Сохраняем текущую оценку
+            window.currentEstimation = prevalence;
+        }
+
+        function applyEstimation() {
+            if (window.currentEstimation) {
+                elements.prevalenceInput.value = window.currentEstimation.toFixed(2);
+                closeEstimator();
+                
+                // Если не выбран интерес, предлагаем ввести
+                if (!elements.interestSelect.value && !elements.customInterest.value) {
+                    elements.customInterest.value = 'Оценённый интерес';
+                }
+                
+                // Показываем сообщение
+                setTimeout(() => {
+                    elements.calculateBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 300);
+            }
+        }
+
+        function showError(message) {
+            alert(message);
+        }
+
+        function formatNumber(num) {
+            if (num >= 1000000) {
+                return (num / 1000000).toFixed(1) + ' млн';
+            } else if (num >= 1000) {
+                return (num / 1000).toFixed(1) + ' тыс';
+            }
+            return new Intl.NumberFormat('ru-RU').format(num);
+        }
+    </script>
+</body>
+</html>

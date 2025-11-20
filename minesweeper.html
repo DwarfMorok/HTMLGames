@@ -1,0 +1,719 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Сапёр-подрывник</title>
+    <style>
+        /* Центровка */
+        body {
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(45deg, #1a1a2e, #16213e);
+            font-family: Arial, sans-serif;
+            color: white;
+        }
+
+        h1 {
+            color: #ff6b6b;
+            text-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+            margin-bottom: 10px;
+        }
+
+        /* Панелька с инфой */
+        .info-panel {
+            display: flex;
+            gap: 30px;
+            margin: 20px 0;
+            font-size: 18px;
+        }
+
+        .mines {
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+
+        .flags {
+            color: #4ecdc4;
+            font-weight: bold;
+        }
+
+        .time {
+            color: #ffd166;
+            font-weight: bold;
+        }
+
+        /* Выбор Сложности */
+        .level-select {
+            display: flex;
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .level-btn {
+            padding: 10px 20px;
+            background: #45b7d1;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+            .level-btn.active {
+                background: #ffd166;
+                color: #1a1a2e;
+            }
+
+        /* Игровое поле */
+        #game-board {
+            display: grid;
+            gap: 2px;
+            background: #333;
+            padding: 5px;
+            border-radius: 10px;
+            border: 3px solid #ff6b6b;
+            margin: 20px 0;
+        }
+
+        /* Клеточки */
+        .cell {
+            width: 30px;
+            height: 30px;
+            background: #ddd;
+            border: 2px outset #bbb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 14px;
+            user-select: none;
+        }
+
+            .cell:hover {
+                background: #eee;
+            }
+
+            .cell.revealed {
+                background: #bbb;
+                border: 1px solid #999;
+            }
+
+            .cell.mine {
+                background: #ff6b6b;
+                border: 1px solid #cc0000;
+            }
+
+            .cell.flag {
+                background: #4ecdc4;
+            }
+
+            .cell.question {
+                background: #ffd166;
+            }
+
+        /* Красотульки */
+        .number-1 {
+            color: #0000ff;
+        }
+
+        .number-2 {
+            color: #008000;
+        }
+
+        .number-3 {
+            color: #ff0000;
+        }
+
+        .number-4 {
+            color: #000080;
+        }
+
+        .number-5 {
+            color: #800000;
+        }
+
+        .number-6 {
+            color: #008080;
+        }
+
+        .number-7 {
+            color: #000000;
+        }
+
+        .number-8 {
+            color: #808080;
+        }
+
+        /* Управление */
+        button {
+            padding: 12px 25px;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+            margin: 5px;
+        }
+
+            button:hover {
+                background: #ff5252;
+                transform: scale(1.05);
+            }
+
+        /* Уведомы */
+        .message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px;
+            border-radius: 15px;
+            border: 3px solid #ff6b6b;
+            text-align: center;
+            display: none;
+            z-index: 100;
+        }
+
+        /* KaBOOM */
+        @keyframes explode {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.3);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .exploding {
+            animation: explode 0.3s;
+            background: #ff0000 !important;
+        }
+
+        /* анимашки открывашки */
+        @keyframes reveal {
+            0% {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .revealing {
+            animation: reveal 0.2s;
+        }
+    </style>
+</head>
+<body>
+    <h1>💣 Сапёр-подрывник</h1>
+
+    <div class="info-panel">
+        <div>Мины: <span class="mines" id="mines">10</span></div>
+        <div>Флаги: <span class="flags" id="flags">0</span></div>
+        <div>Время: <span class="time" id="time">0</span></div>
+    </div>
+
+    <div class="level-select">
+        <button class="level-btn active" onclick="selectLevel('beginner')">Новичок (9×9)</button>
+        <button class="level-btn" onclick="selectLevel('intermediate')">Любитель (16×16)</button>
+        <button class="level-btn" onclick="selectLevel('expert')">Эксперт (16×30)</button>
+    </div>
+
+    <!-- Игровое поле 2.0 -->
+    <div id="game-board"></div>
+
+    <div>
+        <button onclick="startGame()">Новая игра</button>
+        <button onclick="toggleMarkMode()">Режим: <span id="mark-mode">Флаг</span></button>
+    </div>
+
+    <div class="message" id="message"></div>
+
+    <script>
+        // определение пуся ли игрок
+        const LEVELS = {
+            beginner: { rows: 9, cols: 9, mines: 10 },
+            intermediate: { rows: 16, cols: 16, mines: 40 },
+            expert: { rows: 16, cols: 30, mines: 99 }
+        };
+
+        // Состояние игры
+        let gameState = {
+            board: [],
+            mines: [],
+            flags: new Set(),
+            revealed: new Set(),
+            gameOver: false,
+            gameWon: false,
+            startTime: null,
+            currentTime: 0,
+            timer: null,
+            currentLevel: 'beginner',
+            markMode: 'flag' // 'flag' или 'question'
+        };
+
+        // Инициализация
+        function initGame() {
+            const level = LEVELS[gameState.currentLevel];
+            gameState.board = [];
+            gameState.mines = [];
+            gameState.flags = new Set();
+            gameState.revealed = new Set();
+            gameState.gameOver = false;
+            gameState.gameWon = false;
+            gameState.currentTime = 0;
+
+            if (gameState.timer) {
+                clearInterval(gameState.timer);
+            }
+
+            // Void поле
+            for (let row = 0; row < level.rows; row++) {
+                gameState.board[row] = [];
+                for (let col = 0; col < level.cols; col++) {
+                    gameState.board[row][col] = {
+                        isMine: false,
+                        neighborMines: 0,
+                        row: row,
+                        col: col
+                    };
+                }
+            }
+
+            // Фигачим мины
+            placeMines();
+
+            // Докапываемся до соседних мин
+            calculateNeighbors();
+
+            // Поле в DOM
+            createBoard();
+
+            // Обнова интерфейса
+            updateUI();
+        }
+
+        // Фигачим мины плотнее
+        function placeMines() {
+            const level = LEVELS[gameState.currentLevel];
+            let minesPlaced = 0;
+
+            while (minesPlaced < level.mines) {
+                const row = Math.floor(Math.random() * level.rows);
+                const col = Math.floor(Math.random() * level.cols);
+
+                if (!gameState.board[row][col].isMine) {
+                    gameState.board[row][col].isMine = true;
+                    gameState.mines.push(`${row},${col}`);
+                    minesPlaced++;
+                }
+            }
+        }
+
+        // процесс докопки соседних мин
+        function calculateNeighbors() {
+            const level = LEVELS[gameState.currentLevel];
+
+            for (let row = 0; row < level.rows; row++) {
+                for (let col = 0; col < level.cols; col++) {
+                    if (!gameState.board[row][col].isMine) {
+                        let count = 0;
+
+                        // Проверка соседних клеток
+                        for (let dr = -1; dr <= 1; dr++) {
+                            for (let dc = -1; dc <= 1; dc++) {
+                                const newRow = row + dr;
+                                const newCol = col + dc;
+
+                                if (newRow >= 0 && newRow < level.rows &&
+                                    newCol >= 0 && newCol < level.cols &&
+                                    gameState.board[newRow][newCol].isMine) {
+                                    count++;
+                                }
+                            }
+                        }
+
+                        gameState.board[row][col].neighborMines = count;
+                    }
+                }
+            }
+        }
+
+        // Поле в DOM
+        function createBoard() {
+            const level = LEVELS[gameState.currentLevel];
+            const boardElement = document.getElementById('game-board');
+
+            // SIZE сетки
+            boardElement.style.gridTemplateColumns = `repeat(${level.cols}, 30px)`;
+            boardElement.style.gridTemplateRows = `repeat(${level.rows}, 30px)`;
+
+            boardElement.innerHTML = '';
+
+            for (let row = 0; row < level.rows; row++) {
+                for (let col = 0; col < level.cols; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+
+                    // Открыть
+                    cell.addEventListener('click', () => revealCell(row, col));
+
+                    // Пометить
+                    cell.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        markCell(row, col);
+                    });
+
+                    boardElement.appendChild(cell);
+                }
+            }
+        }
+
+        // Открывашка клетки
+        function revealCell(row, col) {
+            if (gameState.gameOver || gameState.gameWon) return;
+
+            const cellKey = `${row},${col}`;
+
+            // Не открывашка клетки
+            if (gameState.flags.has(cellKey)) return;
+
+            // ТАймер
+            if (!gameState.startTime) {
+                gameState.startTime = Date.now();
+                gameState.timer = setInterval(updateTimer, 1000);
+            }
+
+            const cell = gameState.board[row][col];
+
+            if (cell.isMine) {
+                // KaBOOM!
+                gameOver(false);
+                playSound('explode');
+                showExplosion(row, col);
+                return;
+            }
+
+            // Открытие
+            openCell(row, col);
+
+            // Are you win?
+            checkWin();
+        }
+
+        // Рекурсивная открывашка
+        function openCell(row, col) {
+            const level = LEVELS[gameState.currentLevel];
+            const cellKey = `${row},${col}`;
+
+            // Уже открыто или помечено
+            if (gameState.revealed.has(cellKey) || gameState.flags.has(cellKey)) return;
+
+            gameState.revealed.add(cellKey);
+
+            const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            const boardCell = gameState.board[row][col];
+
+            cell.classList.add('revealed', 'revealing');
+            cell.classList.remove('flag', 'question');
+
+            if (boardCell.neighborMines > 0) {
+                cell.textContent = boardCell.neighborMines;
+                cell.classList.add(`number-${boardCell.neighborMines}`);
+                playSound('reveal');
+            } else {
+                playSound('open');
+                cell.textContent = '';
+                // Если вокруг нет мин - докапываемся до соседей
+                for (let dr = -1; dr <= 1; dr++) {
+                    for (let dc = -1; dc <= 1; dc++) {
+                        const newRow = row + dr;
+                        const newCol = col + dc;
+
+                        if (newRow >= 0 && newRow < level.rows &&
+                            newCol >= 0 && newCol < level.cols) {
+                            openCell(newRow, newCol);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Помечено
+        function markCell(row, col) {
+            if (gameState.gameOver || gameState.gameWon) return;
+
+            const cellKey = `${row},${col}`;
+            const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+
+            // Не помечено
+            if (gameState.revealed.has(cellKey)) return;
+
+            if (gameState.markMode === 'flag') {
+                if (gameState.flags.has(cellKey)) {
+                    // Опускаем флаг
+                    gameState.flags.delete(cellKey);
+                    cell.classList.remove('flag');
+                    cell.textContent = '';
+                } else {
+                    // Поднимаем флаг
+                    gameState.flags.add(cellKey);
+                    cell.classList.add('flag');
+                    cell.classList.remove('question');
+                    cell.textContent = '🚩';
+                    playSound('flag');
+                }
+            } else {
+                // Под вопросом
+                if (cell.classList.contains('question')) {
+                    cell.classList.remove('question');
+                    cell.textContent = '';
+                } else {
+                    cell.classList.add('question');
+                    cell.classList.remove('flag');
+                    cell.textContent = '?';
+                    playSound('question');
+                }
+            }
+
+            updateUI();
+            checkWin();
+        }
+
+        // Are you win? 2.0
+        function checkWin() {
+            const level = LEVELS[gameState.currentLevel];
+            const totalCells = level.rows * level.cols;
+            const minesCount = level.mines;
+
+            // Победа С НЮАНСОМ
+            const allMinesFlagged = gameState.mines.every(mine => gameState.flags.has(mine));
+            const allSafeCellsRevealed = gameState.revealed.size === totalCells - minesCount;
+
+            if ((allMinesFlagged || allSafeCellsRevealed) && !gameState.gameOver) {
+                gameOver(true);
+            }
+        }
+
+        // END GAME
+        function gameOver(isWin) {
+            gameState.gameOver = true;
+            gameState.gameWon = isWin;
+
+            if (gameState.timer) {
+                clearInterval(gameState.timer);
+            }
+
+            if (isWin) {
+                playSound('win');
+                showMessage('ПОБЕДА! 🎉 Ты обезвредил все мины!');
+
+                // Флаги
+                gameState.mines.forEach(mineKey => {
+                    if (!gameState.flags.has(mineKey)) {
+                        const [row, col] = mineKey.split(',').map(Number);
+                        const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                        gameState.flags.add(mineKey);
+                        cell.classList.add('flag');
+                        cell.textContent = '🚩';
+                    }
+                });
+            } else {
+                // Мины
+                gameState.mines.forEach(mineKey => {
+                    const [row, col] = mineKey.split(',').map(Number);
+                    const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+
+                    if (!gameState.flags.has(mineKey)) {
+                        cell.classList.add('mine');
+                        cell.textContent = '💣';
+                    }
+                });
+
+                showMessage('KaBOOM! Ты подорвался на мине!');
+            }
+
+            updateUI();
+        }
+
+        // KaBOOM
+        function showExplosion(row, col) {
+            const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            cell.classList.add('exploding', 'mine');
+            cell.textContent = '💥';
+        }
+
+        // обнова таймера
+        function updateTimer() {
+            gameState.currentTime = Math.floor((Date.now() - gameState.startTime) / 1000);
+            updateUI();
+        }
+
+        // обнова интера
+        function updateUI() {
+            const level = LEVELS[gameState.currentLevel];
+            document.getElementById('mines').textContent = level.mines - gameState.flags.size;
+            document.getElementById('flags').textContent = gameState.flags.size;
+            document.getElementById('time').textContent = gameState.currentTime;
+        }
+
+        // переключение режима пометки
+        function toggleMarkMode() {
+            gameState.markMode = gameState.markMode === 'flag' ? 'question' : 'flag';
+            document.getElementById('mark-mode').textContent =
+                gameState.markMode === 'flag' ? 'Флаг' : 'Вопрос';
+        }
+
+        // выборка сложности
+        function selectLevel(level) {
+            gameState.currentLevel = level;
+
+            document.querySelectorAll('.level-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            startGame();
+        }
+
+        // START
+        function startGame() {
+            initGame();
+        }
+
+        // уведомы
+        function showMessage(text) {
+            const messageElement = document.getElementById('message');
+            messageElement.textContent = text;
+            messageElement.style.display = 'block';
+
+            setTimeout(() => {
+                messageElement.style.display = 'none';
+            }, 3000);
+        }
+
+        // Аудио
+        function playSound(type) {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+            switch (type) {
+                case 'open':
+                    const openOsc = audioContext.createOscillator();
+                    const openGain = audioContext.createGain();
+                    openOsc.connect(openGain);
+                    openGain.connect(audioContext.destination);
+
+                    openOsc.frequency.setValueAtTime(200, audioContext.currentTime);
+                    openGain.gain.setValueAtTime(0.1, audioContext.currentTime);
+                    openGain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+
+                    openOsc.start(audioContext.currentTime);
+                    openOsc.stop(audioContext.currentTime + 0.1);
+                    break;
+
+                case 'reveal':
+                    const revealOsc = audioContext.createOscillator();
+                    const revealGain = audioContext.createGain();
+                    revealOsc.connect(revealGain);
+                    revealGain.connect(audioContext.destination);
+
+                    revealOsc.frequency.setValueAtTime(300, audioContext.currentTime);
+                    revealGain.gain.setValueAtTime(0.1, audioContext.currentTime);
+                    revealGain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+
+                    revealOsc.start(audioContext.currentTime);
+                    revealOsc.stop(audioContext.currentTime + 0.2);
+                    break;
+
+                case 'flag':
+                    const flagOsc = audioContext.createOscillator();
+                    const flagGain = audioContext.createGain();
+                    flagOsc.connect(flagGain);
+                    flagGain.connect(audioContext.destination);
+
+                    flagOsc.frequency.setValueAtTime(400, audioContext.currentTime);
+                    flagGain.gain.setValueAtTime(0.1, audioContext.currentTime);
+                    flagGain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+
+                    flagOsc.start(audioContext.currentTime);
+                    flagOsc.stop(audioContext.currentTime + 0.1);
+                    break;
+
+                case 'question':
+                    const questionOsc = audioContext.createOscillator();
+                    const questionGain = audioContext.createGain();
+                    questionOsc.connect(questionGain);
+                    questionGain.connect(audioContext.destination);
+
+                    questionOsc.frequency.setValueAtTime(350, audioContext.currentTime);
+                    questionGain.gain.setValueAtTime(0.1, audioContext.currentTime);
+                    questionGain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+
+                    questionOsc.start(audioContext.currentTime);
+                    questionOsc.stop(audioContext.currentTime + 0.15);
+                    break;
+
+                case 'explode':
+                    for (let i = 0; i < 5; i++) {
+                        setTimeout(() => {
+                            const explodeOsc = audioContext.createOscillator();
+                            const explodeGain = audioContext.createGain();
+                            explodeOsc.connect(explodeGain);
+                            explodeGain.connect(audioContext.destination);
+
+                            explodeOsc.frequency.setValueAtTime(50 + Math.random() * 100, audioContext.currentTime);
+                            explodeGain.gain.setValueAtTime(0.3, audioContext.currentTime);
+                            explodeGain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+                            explodeOsc.start(audioContext.currentTime);
+                            explodeOsc.stop(audioContext.currentTime + 0.3);
+                        }, i * 100);
+                    }
+                    break;
+
+                case 'win':
+                    const winNotes = [523.25, 659.25, 783.99, 1046.50];
+                    winNotes.forEach((freq, index) => {
+                        setTimeout(() => {
+                            const winOsc = audioContext.createOscillator();
+                            const winGain = audioContext.createGain();
+                            winOsc.connect(winGain);
+                            winGain.connect(audioContext.destination);
+
+                            winOsc.frequency.setValueAtTime(freq, audioContext.currentTime);
+                            winGain.gain.setValueAtTime(0.2, audioContext.currentTime);
+                            winGain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+                            winOsc.start(audioContext.currentTime);
+                            winOsc.stop(audioContext.currentTime + 0.3);
+                        }, index * 200);
+                    });
+                    break;
+            }
+        }
+
+        // Запуск
+        window.onload = startGame;
+    </script>
+</body>
+</html>
