@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Шашки</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(to bottom, #2c3e50, #1a1a2e);
+            color: #fff;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: #f1c40f;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            color: #ecf0f1;
+            margin-bottom: 20px;
+        }
+        
+        .game-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 30px;
+            max-width: 1200px;
+            width: 100%;
+        }
+        
+        .board-container {
+            background-color: #34495e;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+        
+        .board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            width: 500px;
+            height: 500px;
+            border: 3px solid #7f8c8d;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        
+        .cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        
+        .cell.light {
+            background-color: #f9e6c2;
+        }
+        
+        .cell.dark {
+            background-color: #8b4513;
+        }
+        
+        .piece {
+            width: 85%;
+            height: 85%;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            z-index: 10;
+            transition: transform 0.2s;
+            border: 2px solid transparent;
+        }
+        
+        .piece:hover {
+            transform: scale(1.05);
+        }
+        
+        .piece.white {
+            background: radial-gradient(circle at 30% 30%, #ffffff, #bdc3c7);
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+            border-color: #95a5a6;
+        }
+        
+        .piece.black {
+            background: radial-gradient(circle at 30% 30%, #2c3e50, #000000);
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.5);
+            border-color: #7f8c8d;
+        }
+        
+        .piece.king::after {
+            content: "♔";
+            position: absolute;
+            font-size: 24px;
+            color: #f1c40f;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+        }
+        
+        .piece.selected {
+            box-shadow: 0 0 0 3px #f1c40f, 0 0 10px #f1c40f;
+        }
+        
+        .possible-move {
+            position: absolute;
+            width: 30%;
+            height: 30%;
+            background-color: rgba(46, 204, 113, 0.7);
+            border-radius: 50%;
+            z-index: 5;
+        }
+        
+        .possible-capture {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 3px solid rgba(231, 76, 60, 0.8);
+            border-radius: 50%;
+            z-index: 5;
+            box-sizing: border-box;
+        }
+        
+        .info-panel {
+            background-color: #34495e;
+            border-radius: 10px;
+            padding: 20px;
+            width: 300px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+        
+        .status {
+            background-color: #2c3e50;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .status-text {
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            min-height: 40px;
+        }
+        
+        .current-player {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .player-indicator {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+        }
+        
+        .player-indicator.white {
+            background: radial-gradient(circle at 30% 30%, #ffffff, #bdc3c7);
+            border: 1px solid #95a5a6;
+        }
+        
+        .player-indicator.black {
+            background: radial-gradient(circle at 30% 30%, #2c3e50, #000000);
+            border: 1px solid #7f8c8d;
+        }
+        
+        .scores {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        
+        .score {
+            text-align: center;
+            background-color: #2c3e50;
+            padding: 10px;
+            border-radius: 8px;
+            flex: 1;
+            margin: 0 5px;
+        }
+        
+        .score-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #f1c40f;
+        }
+        
+        .game-mode {
+            margin-bottom: 20px;
+        }
+        
+        .game-mode h3 {
+            margin-bottom: 10px;
+            color: #f1c40f;
+        }
+        
+        .mode-selector {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .mode-btn {
+            flex: 1;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .mode-btn.active {
+            background-color: #2980b9;
+            box-shadow: 0 0 0 2px #f1c40f;
+        }
+        
+        .mode-btn:hover:not(.active) {
+            background-color: #2980b9;
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        button.reset {
+            background-color: #e74c3c;
+        }
+        
+        button.reset:hover {
+            background-color: #c0392b;
+        }
+        
+        .rules {
+            margin-top: 20px;
+            background-color: #34495e;
+            border-radius: 10px;
+            padding: 15px;
+            max-width: 840px;
+        }
+        
+        .rules h3 {
+            color: #f1c40f;
+            margin-bottom: 10px;
+        }
+        
+        .rules ul {
+            padding-left: 20px;
+            line-height: 1.5;
+        }
+        
+        .rules li {
+            margin-bottom: 8px;
+        }
+        
+        @media (max-width: 900px) {
+            .game-container {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .board {
+                width: 400px;
+                height: 400px;
+            }
+            
+            .info-panel {
+                width: 400px;
+            }
+        }
+        
+        @media (max-width: 500px) {
+            .board {
+                width: 320px;
+                height: 320px;
+            }
+            
+            .info-panel {
+                width: 320px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Шашки</h1>
+    </div>
+    
+    <div class="game-container">
+        <div class="board-container">
+            <div class="board" id="board"></div>
+        </div>
+        
+        <div class="info-panel">
+            <div class="status">
+                <div class="status-text" id="status">Ход белых шашек</div>
+                <div class="current-player">
+                    <div class="player-indicator white"></div>
+                    <span>Белые (игрок 1)</span>
+                </div>
+                <div class="current-player">
+                    <div class="player-indicator black"></div>
+                    <span>Чёрные (игрок 2)</span>
+                </div>
+            </div>
+            
+            <div class="scores">
+                <div class="score">
+                    <div>Белые</div>
+                    <div class="score-value" id="white-score">12</div>
+                </div>
+                <div class="score">
+                    <div>Чёрные</div>
+                    <div class="score-value" id="black-score">12</div>
+                </div>
+            </div>
+            
+            <div class="game-mode">
+                <h3>Режим игры:</h3>
+                <div class="mode-selector">
+                    <button id="mode-two-players" class="mode-btn active">Два игрока</button>
+                    <button id="mode-vs-computer" class="mode-btn">Против компьютера</button>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button id="new-game">Новая игра</button>
+                <button id="reset-game" class="reset">Сбросить игру</button>
+                <button id="hint-toggle">Подсказки: Вкл</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="rules">
+        <h3>Правила игры в шашки:</h3>
+        <ul>
+            <li>Игра ведётся на стандартной доске 8×8 клеток.</li>
+            <li>Цель игры - захватить все шашки противника или лишить их возможности хода.</li>
+            <li>Шашки ходят только по чёрным клеткам и только вперёд по диагонали.</li>
+            <li>Если шашка достигает противоположного края доски, она становится дамкой.</li>
+            <li>Дамка может ходить на любое количество клеток по диагонали в любом направлении.</li>
+            <li>Если есть возможность взятия шашки противника, игрок обязан это сделать.</li>
+            <li>В режиме "Два игрока" играют два человека на одном компьютере по очереди.</li>
+        </ul>
+    </div>
+
+    <script>
+        // Константы и Переменные
+        const BOARD_SIZE = 8;
+        const WHITE = 'white';
+        const BLACK = 'black';
+        const EMPTY = 'empty';
+        
+        let board = [];
+        let currentPlayer = WHITE;
+        let selectedPiece = null;
+        let possibleMoves = [];
+        let gameOver = false;
+        let whiteScore = 12;
+        let blackScore = 12;
+        let showHints = true;
+        let gameMode = 'two-players'; // 'two-players' или 'vs-computer'
+        
+        // Инициализация
+        function initGame() {
+            createBoard();
+            setupBoard();
+            renderBoard();
+            updateStatus();
+            updateScores();
+            
+            // Обработчики событий
+            document.getElementById('new-game').addEventListener('click', newGame);
+            document.getElementById('reset-game').addEventListener('click', resetGame);
+            document.getElementById('hint-toggle').addEventListener('click', toggleHints);
+            
+            // Обработчики для выбора режима игры
+            document.getElementById('mode-two-players').addEventListener('click', () => setGameMode('two-players'));
+            document.getElementById('mode-vs-computer').addEventListener('click', () => setGameMode('vs-computer'));
+        }
+        
+        // Игровая Доска
+        function createBoard() {
+            const boardElement = document.getElementById('board');
+            boardElement.innerHTML = '';
+            
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                board[row] = [];
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    // Цвет клеточек
+                    const isDark = (row + col) % 2 === 1;
+                    
+                    // Создание клеточек
+                    const cell = document.createElement('div');
+                    cell.className = `cell ${isDark ? 'dark' : 'light'}`;
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    
+                    // Обработчик кликов
+                    cell.addEventListener('click', () => cellClicked(row, col));
+                    
+                    boardElement.appendChild(cell);
+                    board[row][col] = { piece: EMPTY, element: cell };
+                }
+            }
+        }
+        
+        // Нач позиции
+        function setupBoard() {
+            // Очистка поля
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    board[row][col].piece = EMPTY;
+                }
+            }
+            
+            // Беляши
+            for (let row = 5; row < BOARD_SIZE; row++) {
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    if ((row + col) % 2 === 1) {
+                        if (row === 5 || row === 7) {
+                            if (col % 2 === 0) {
+                                board[row][col].piece = { color: WHITE, isKing: false };
+                            }
+                        }
+                        else if (row === 6) {
+                            if (col % 2 === 1) {
+                                board[row][col].piece = { color: WHITE, isKing: false };
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Черныши
+            for (let row = 0; row < 3; row++) {
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    if ((row + col) % 2 === 1) {
+                        if (row === 0 || row === 2) {
+                            if (col % 2 === 1) {
+                                board[row][col].piece = { color: BLACK, isKing: false };
+                            }
+                        }
+                        else if (row === 1) {
+                            if (col % 2 === 0) {
+                                board[row][col].piece = { color: BLACK, isKing: false };
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Сброс счёта
+            whiteScore = 12;
+            blackScore = 12;
+            currentPlayer = WHITE;
+            selectedPiece = null;
+            possibleMoves = [];
+            gameOver = false;
+        }
+        
+        // Отрисовка поля
+        function renderBoard() {
+            // Очистка клеток
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    const cell = board[row][col];
+                    const cellElement = cell.element;
+                    
+                    cellElement.innerHTML = '';
+                    
+                    if (cell.piece !== EMPTY) {
+                        const piece = document.createElement('div');
+                        piece.className = `piece ${cell.piece.color} ${cell.piece.isKing ? 'king' : ''}`;
+                        piece.dataset.row = row;
+                        piece.dataset.col = col;
+                        
+                        piece.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            pieceClicked(row, col);
+                        });
+                        
+                        cellElement.appendChild(piece);
+                    }
+                }
+            }
+            
+            // Подсказки
+            if (showHints && possibleMoves.length > 0) {
+                possibleMoves.forEach(move => {
+                    const cell = board[move.row][move.col];
+                    const marker = document.createElement('div');
+                    
+                    if (move.isCapture) {
+                        marker.className = 'possible-capture';
+                    } else {
+                        marker.className = 'possible-move';
+                    }
+                    
+                    cell.element.appendChild(marker);
+                });
+            }
+            
+            if (selectedPiece) {
+                const { row, col } = selectedPiece;
+                const pieceElement = board[row][col].element.querySelector('.piece');
+                if (pieceElement) {
+                    pieceElement.classList.add('selected');
+                }
+            }
+        }
+        
+        function pieceClicked(row, col) {
+            if (gameOver) return;
+            
+            const piece = board[row][col].piece;
+            
+            if (piece !== EMPTY && piece.color === currentPlayer) {
+                if (selectedPiece && selectedPiece.row === row && selectedPiece.col === col) {
+                    selectedPiece = null;
+                    possibleMoves = [];
+                } else {
+                    selectedPiece = { row, col };
+                    possibleMoves = getValidMoves(row, col);
+                }
+                
+                renderBoard();
+                updateStatus();
+            }
+        }
+        
+        function cellClicked(row, col) {
+            if (gameOver || !selectedPiece) return;
+            
+            const move = possibleMoves.find(m => m.row === row && m.col === col);
+            
+            if (move) {
+                makeMove(selectedPiece.row, selectedPiece.col, row, col, move.isCapture);
+                
+                if (move.isCapture && canCaptureMore(row, col)) {
+                    selectedPiece = { row, col };
+                    possibleMoves = getValidCaptures(row, col);
+                } else {
+
+                    currentPlayer = currentPlayer === WHITE ? BLACK : WHITE;
+                    selectedPiece = null;
+                    possibleMoves = [];
+                    
+                    checkGameOver();
+                    
+                    if (gameMode === 'vs-computer' && currentPlayer === BLACK && !gameOver) {
+                        setTimeout(makeComputerMove, 500);
+                    }
+                }
+                
+                renderBoard();
+                updateStatus();
+                updateScores();
+            }
+        }
+        
+        function makeMove(fromRow, fromCol, toRow, toCol, isCapture) {
+            const piece = board[fromRow][fromCol].piece;
+            board[fromRow][fromCol].piece = EMPTY;
+            board[toRow][toCol].piece = piece;
+            
+            if ((piece.color === WHITE && toRow === 0) || 
+                (piece.color === BLACK && toRow === BOARD_SIZE - 1)) {
+                piece.isKing = true;
+            }
+            
+            if (isCapture) {
+                const capturedRow = (fromRow + toRow) / 2;
+                const capturedCol = (fromCol + toCol) / 2;
+                board[capturedRow][capturedCol].piece = EMPTY;
+                
+                if (piece.color === WHITE) {
+                    blackScore--;
+                } else {
+                    whiteScore--;
+                }
+            }
+        }
+        
+        function getValidMoves(row, col) {
+            const piece = board[row][col].piece;
+            const moves = [];
+            
+            const allCaptures = getAllCapturesForPlayer(currentPlayer);
+            
+            if (allCaptures.length > 0) {
+
+                return getValidCaptures(row, col);
+            }
+            
+            const directions = getMoveDirections(piece);
+            
+            for (const dir of directions) {
+                const newRow = row + dir.row;
+                const newCol = col + dir.col;
+                
+                if (isValidCell(newRow, newCol) && board[newRow][newCol].piece === EMPTY) {
+                    moves.push({ row: newRow, col: newCol, isCapture: false });
+                }
+            }
+            
+            return moves;
+        }
+        
+        function getValidCaptures(row, col) {
+            const piece = board[row][col].piece;
+            const captures = [];
+            
+            const directions = getMoveDirections(piece);
+            
+            for (const dir of directions) {
+                const midRow = row + dir.row;
+                const midCol = col + dir.col;
+                const destRow = row + dir.row * 2;
+                const destCol = col + dir.col * 2;
+                
+                if (isValidCell(destRow, destCol) && 
+                    board[midRow][midCol].piece !== EMPTY &&
+                    board[midRow][midCol].piece.color !== piece.color &&
+                    board[destRow][destCol].piece === EMPTY) {
+                    
+                    captures.push({ row: destRow, col: destCol, isCapture: true });
+                }
+            }
+            
+            return captures;
+        }
+        
+        function getAllCapturesForPlayer(player) {
+            const captures = [];
+            
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    const piece = board[row][col].piece;
+                    
+                    if (piece !== EMPTY && piece.color === player) {
+                        const pieceCaptures = getValidCaptures(row, col);
+                        captures.push(...pieceCaptures.map(c => ({ from: { row, col }, to: c })));
+                    }
+                }
+            }
+            
+            return captures;
+        }
+        
+        function canCaptureMore(row, col) {
+            return getValidCaptures(row, col).length > 0;
+        }
+        
+
+        function getMoveDirections(piece) {
+            if (piece.isKing) {
+
+                return [
+                    { row: -1, col: -1 },
+                    { row: -1, col: 1 },
+                    { row: 1, col: -1 },
+                    { row: 1, col: 1 }
+                ];
+            } else if (piece.color === WHITE) {
+
+                return [
+                    { row: -1, col: -1 },
+                    { row: -1, col: 1 }
+                ];
+            } else {
+
+                return [
+                    { row: 1, col: -1 },
+                    { row: 1, col: 1 }
+                ];
+            }
+        }
+        
+
+        function isValidCell(row, col) {
+            return row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE;
+        }
+        
+        // Проверка Финиша
+        function checkGameOver() {
+            // Остались ли шашки у игроков
+            let whitePieces = 0;
+            let blackPieces = 0;
+            let whiteHasMoves = false;
+            let blackHasMoves = false;
+            
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    const piece = board[row][col].piece;
+                    
+                    if (piece !== EMPTY) {
+                        if (piece.color === WHITE) {
+                            whitePieces++;
+                            if (!whiteHasMoves) {
+                                const moves = getValidMoves(row, col);
+                                if (moves.length > 0) whiteHasMoves = true;
+                            }
+                        } else {
+                            blackPieces++;
+                            if (!blackHasMoves) {
+                                const moves = getValidMoves(row, col);
+                                if (moves.length > 0) blackHasMoves = true;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            if (whitePieces === 0 || (currentPlayer === WHITE && !whiteHasMoves)) {
+                gameOver = true;
+                document.getElementById('status').textContent = 'Чёрные выиграли!';
+                return;
+            }
+            
+            if (blackPieces === 0 || (currentPlayer === BLACK && !blackHasMoves)) {
+                gameOver = true;
+                document.getElementById('status').textContent = 'Белые выиграли!';
+                return;
+            }
+        }
+        
+        function makeComputerMove() {
+            if (gameOver) return;
+            
+            const allMoves = [];
+            const allCaptures = getAllCapturesForPlayer(BLACK);
+            
+            if (allCaptures.length > 0) {
+                const randomCapture = allCaptures[Math.floor(Math.random() * allCaptures.length)];
+                selectedPiece = randomCapture.from;
+                possibleMoves = [randomCapture.to];
+            } else {
+                for (let row = 0; row < BOARD_SIZE; row++) {
+                    for (let col = 0; col < BOARD_SIZE; col++) {
+                        const piece = board[row][col].piece;
+                        if (piece !== EMPTY && piece.color === BLACK) {
+                            const moves = getValidMoves(row, col);
+                            moves.forEach(move => {
+                                allMoves.push({ from: { row, col }, to: move });
+                            });
+                        }
+                    }
+                }
+                
+                if (allMoves.length === 0) return;
+                
+                const randomMove = allMoves[Math.floor(Math.random() * allMoves.length)];
+                selectedPiece = randomMove.from;
+                possibleMoves = [randomMove.to];
+            }
+            
+            const move = possibleMoves[0];
+            makeMove(selectedPiece.row, selectedPiece.col, move.row, move.col, move.isCapture);
+            
+            if (move.isCapture && canCaptureMore(move.row, move.col)) {
+                selectedPiece = { row: move.row, col: move.col };
+                possibleMoves = getValidCaptures(move.row, move.col);
+                setTimeout(makeComputerMove, 500);
+            } else {
+                currentPlayer = WHITE;
+                selectedPiece = null;
+                possibleMoves = [];
+                
+                checkGameOver();
+                
+                renderBoard();
+                updateStatus();
+                updateScores();
+            }
+        }
+        
+        function updateStatus() {
+            const statusElement = document.getElementById('status');
+            
+            if (gameOver) return;
+            
+            if (gameMode === 'vs-computer' && currentPlayer === BLACK) {
+                statusElement.textContent = 'Ход компьютера...';
+                return;
+            }
+            
+            if (selectedPiece) {
+                statusElement.textContent = `Выбрана шашка (${currentPlayer === WHITE ? 'белая' : 'чёрная'}). Выберите клетку для хода.`;
+            } else {
+                statusElement.textContent = `Ход ${currentPlayer === WHITE ? 'белых' : 'чёрных'} шашек`;
+            }
+        }
+        
+        function updateScores() {
+            document.getElementById('white-score').textContent = whiteScore;
+            document.getElementById('black-score').textContent = blackScore;
+        }
+        
+        function setGameMode(mode) {
+            gameMode = mode;
+            
+            document.getElementById('mode-two-players').classList.toggle('active', mode === 'two-players');
+            document.getElementById('mode-vs-computer').classList.toggle('active', mode === 'vs-computer');
+            
+            if (mode === 'vs-computer' && currentPlayer === BLACK && !gameOver) {
+                setTimeout(makeComputerMove, 500);
+            }
+            
+            updateStatus();
+        }
+        
+        function newGame() {
+            setupBoard();
+            renderBoard();
+            updateStatus();
+            updateScores();
+            
+            if (gameMode === 'vs-computer' && currentPlayer === BLACK) {
+                setTimeout(makeComputerMove, 500);
+            }
+        }
+        
+        function resetGame() {
+            if (confirm('Вы уверены, что хотите сбросить игру? Текущий прогресс будет потерян.')) {
+                newGame();
+            }
+        }
+        
+        function toggleHints() {
+            showHints = !showHints;
+            document.getElementById('hint-toggle').textContent = `Подсказки: ${showHints ? 'Вкл' : 'Выкл'}`;
+            
+            if (selectedPiece) {
+                possibleMoves = getValidMoves(selectedPiece.row, selectedPiece.col);
+            }
+            
+            renderBoard();
+        }
+        
+        window.addEventListener('DOMContentLoaded', initGame);
+    </script>
+</body>
+</html>

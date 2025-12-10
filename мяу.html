@@ -1,0 +1,1502 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Симуляция эволюции демка</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0c2461, #1e3799, #4a69bd);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .simulation-container {
+            position: relative;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        #simulationCanvas {
+            display: block;
+            background: #1a3c27;
+            width: 100%;
+            height: 600px;
+        }
+
+        .controls-panel {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .control-group {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .control-group h3 {
+            margin-bottom: 10px;
+            color: #7ed6df;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-group h3::before {
+            content: "▶";
+            font-size: 0.8em;
+        }
+
+        .slider-container {
+            margin-bottom: 12px;
+        }
+
+        .slider-container label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+
+        .slider-container input {
+            width: 100%;
+        }
+
+        .value-display {
+            text-align: right;
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+
+        .buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        button {
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: #3498db;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button#startBtn {
+            background: #2ecc71;
+        }
+
+        button#pauseBtn {
+            background: #f39c12;
+        }
+
+        button#resetBtn {
+            background: #e74c3c;
+        }
+
+        .stats-panel {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin: 5px 0;
+            color: #7ed6df;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .charts-panel {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .chart-container {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .chart-container h3 {
+            margin-bottom: 10px;
+            color: #7ed6df;
+            text-align: center;
+        }
+
+        canvas {
+            width: 100%;
+            height: 200px;
+        }
+
+        .info-panel {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .info-panel h3 {
+            margin-bottom: 15px;
+            color: #7ed6df;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-panel h3::before {
+            content: "ℹ";
+            font-size: 1.2em;
+        }
+
+        .log {
+            height: 150px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .log-entry {
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .log-entry::before {
+            content: "•";
+            color: #7ed6df;
+        }
+
+        .time-badge {
+            background: #3498db;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            margin-right: 5px;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+        }
+
+        .plants-color {
+            background: #27ae60;
+        }
+
+        .herbivores-color {
+            background: #f39c12;
+        }
+
+        .predators-color {
+            background: #e74c3c;
+        }
+
+        .season-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .season-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+        }
+
+        .spring { background: #2ecc71; }
+        .summer { background: #f1c40f; }
+        .autumn { background: #e67e22; }
+        .winter { background: #3498db; }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 100;
+        }
+
+        @media (max-width: 1100px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-panel {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .charts-panel {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .stats-panel {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Симуляция эволюции демка</h1>
+        </header>
+
+        <div class="dashboard">
+            <div class="simulation-container">
+                <canvas id="simulationCanvas"></canvas>
+                <div class="season-indicator">
+                    <div class="season-icon spring"></div>
+                    <span id="seasonText">Весна</span>
+                </div>
+                <div class="tooltip" id="tooltip"></div>
+            </div>
+
+            <div class="controls-panel">
+                <div class="control-group">
+                    <h3>Управление симуляцией</h3>
+                    <div class="buttons">
+                        <button id="startBtn">
+                            <span>▶</span> Старт
+                        </button>
+                        <button id="pauseBtn">
+                            <span>⏸</span> Пауза
+                        </button>
+                        <button id="resetBtn">
+                            <span>↺</span> Сброс
+                        </button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <h3>Параметры симуляции</h3>
+                    <div class="slider-container">
+                        <label for="speedSlider">Скорость симуляции</label>
+                        <input type="range" id="speedSlider" min="1" max="10" value="5">
+                        <div class="value-display">Средняя</div>
+                    </div>
+                    <div class="slider-container">
+                        <label for="mutationRateSlider">Частота мутаций</label>
+                        <input type="range" id="mutationRateSlider" min="1" max="10" value="5">
+                        <div class="value-display">Средняя</div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <h3>Начальные популяции</h3>
+                    <div class="slider-container">
+                        <label for="initialPlantsSlider">Растения</label>
+                        <input type="range" id="initialPlantsSlider" min="10" max="200" value="80">
+                        <div class="value-display">80</div>
+                    </div>
+                    <div class="slider-container">
+                        <label for="initialHerbivoresSlider">Травоядные</label>
+                        <input type="range" id="initialHerbivoresSlider" min="5" max="50" value="15">
+                        <div class="value-display">15</div>
+                    </div>
+                    <div class="slider-container">
+                        <label for="initialPredatorsSlider">Хищники</label>
+                        <input type="range" id="initialPredatorsSlider" min="1" max="20" value="5">
+                        <div class="value-display">5</div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <h3>Факторы среды</h3>
+                    <div class="slider-container">
+                        <label for="seasonLengthSlider">Длина сезона</label>
+                        <input type="range" id="seasonLengthSlider" min="50" max="500" value="200">
+                        <div class="value-display">200 циклов</div>
+                    </div>
+                    <div class="slider-container">
+                        <label for="disasterFrequencySlider">Частота катастроф</label>
+                        <input type="range" id="disasterFrequencySlider" min="1" max="10" value="3">
+                        <div class="value-display">Низкая</div>
+                    </div>
+                </div>
+
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color plants-color"></div>
+                        <span>Растения</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color herbivores-color"></div>
+                        <span>Травоядные</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color predators-color"></div>
+                        <span>Хищники</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-panel">
+            <div class="stat-card">
+                <div class="stat-label">Растения</div>
+                <div class="stat-value" id="plantsCount">0</div>
+                <div class="stat-label" id="plantsTrend">→ Стабильно</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Травоядные</div>
+                <div class="stat-value" id="herbivoresCount">0</div>
+                <div class="stat-label" id="herbivoresTrend">→ Стабильно</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Хищники</div>
+                <div class="stat-value" id="predatorsCount">0</div>
+                <div class="stat-label" id="predatorsTrend">→ Стабильно</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Поколение</div>
+                <div class="stat-value" id="generationCount">0</div>
+                <div class="stat-label">Средний возраст</div>
+            </div>
+        </div>
+
+        <div class="charts-panel">
+            <div class="chart-container">
+                <h3>Динамика популяций</h3>
+                <canvas id="populationChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3>Средние характеристики</h3>
+                <canvas id="traitsChart"></canvas>
+            </div>
+        </div>
+
+        <div class="info-panel">
+            <h3>Журнал событий</h3>
+            <div class="log" id="eventLog">
+                <div class="log-entry">
+                    <span class="time-badge">T+0</span>
+                    Симуляция инициализирована. Нажмите "Старт" для начала.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Переменные 
+        const canvas = document.getElementById('simulationCanvas');
+        const ctx = canvas.getContext('2d');
+        const populationCtx = document.getElementById('populationChart').getContext('2d');
+        const traitsCtx = document.getElementById('traitsChart').getContext('2d');
+        
+        // Размеры
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+        
+        let simulationRunning = false;
+        let simulationTime = 0;
+        let generation = 0;
+        let season = 0; // времена года
+        let seasonProgress = 0;
+        
+        // Управление
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const speedSlider = document.getElementById('speedSlider');
+        const mutationRateSlider = document.getElementById('mutationRateSlider');
+        const initialPlantsSlider = document.getElementById('initialPlantsSlider');
+        const initialHerbivoresSlider = document.getElementById('initialHerbivoresSlider');
+        const initialPredatorsSlider = document.getElementById('initialPredatorsSlider');
+        const seasonLengthSlider = document.getElementById('seasonLengthSlider');
+        const disasterFrequencySlider = document.getElementById('disasterFrequencySlider');
+        
+        // Статистика
+        const plantsCountElem = document.getElementById('plantsCount');
+        const herbivoresCountElem = document.getElementById('herbivoresCount');
+        const predatorsCountElem = document.getElementById('predatorsCount');
+        const generationCountElem = document.getElementById('generationCount');
+        const plantsTrendElem = document.getElementById('plantsTrend');
+        const herbivoresTrendElem = document.getElementById('herbivoresTrend');
+        const predatorsTrendElem = document.getElementById('predatorsTrend');
+        const seasonTextElem = document.getElementById('seasonText');
+        const eventLog = document.getElementById('eventLog');
+        const tooltip = document.getElementById('tooltip');
+        
+        // Граффики
+        const populationData = {
+            plants: [],
+            herbivores: [],
+            predators: [],
+            time: []
+        };
+        
+        const traitsData = {
+            herbivoreSpeed: [],
+            herbivoreSize: [],
+            predatorSpeed: [],
+            predatorSize: [],
+            time: []
+        };
+        
+        // Гены
+        const GENES = {
+            SPEED: 0,
+            SIZE: 1,
+            SENSE: 2,
+            ENERGY_EFFICIENCY: 3
+        };
+        
+        // Виды существ
+        
+        class Plant {
+            constructor(x, y, energy = 100) {
+                this.x = x;
+                this.y = y;
+                this.energy = energy;
+                this.maxEnergy = 100;
+                this.growthRate = 0.5;
+                this.size = 5 + (energy / this.maxEnergy) * 5;
+                this.color = '#27ae60';
+                this.age = 0;
+                this.maxAge = 500 + Math.random() * 500;
+            }
+            
+            update() {
+                this.age++;
+                
+                // Старение растений
+                if (this.age > this.maxAge) {
+                    this.energy -= 2;
+                }
+                
+                // Влияние сезонов
+                let seasonMultiplier = 1;
+                switch(season) {
+                    case 0: seasonMultiplier = 1.2; break; // Весна - быстрый рост
+                    case 1: seasonMultiplier = 1.5; break; // Лето - очень быстрый рост
+                    case 2: seasonMultiplier = 0.8; break; // Осень - медленный рост
+                    case 3: seasonMultiplier = 0.3; break; // Зима - очень медленный рост
+                }
+                
+                // Рост растений
+                if (this.energy < this.maxEnergy) {
+                    this.energy += this.growthRate * seasonMultiplier * (plantGrowthMultiplier / 5);
+                    this.size = 5 + (this.energy / this.maxEnergy) * 5;
+                }
+                
+                // Размножение растений
+                if (this.energy > this.maxEnergy * 0.8 && Math.random() < 0.01 * seasonMultiplier) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const distance = 20 + Math.random() * 30;
+                    const newX = this.x + Math.cos(angle) * distance;
+                    const newY = this.y + Math.sin(angle) * distance;
+                    
+                    // Проверка расположения нового растения
+                    if (newX > 10 && newX < canvas.width - 10 && newY > 10 && newY < canvas.height - 10) {
+                        plants.push(new Plant(newX, newY, 30));
+                        addLogEntry("Выросло новое растение", "plant");
+                    }
+                }
+                
+                // Смерть
+                if (this.energy <= 0) {
+                    const index = plants.indexOf(this);
+                    if (index !== -1) {
+                        plants.splice(index, 1);
+                    }
+                }
+            }
+            
+            draw() {
+                // Отображения растения
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Листва
+                ctx.fillStyle = '#2ecc71';
+                for (let i = 0; i < 3; i++) {
+                    const angle = (i * Math.PI * 2 / 3) + (this.age * 0.05);
+                    const leafX = this.x + Math.cos(angle) * this.size * 0.8;
+                    const leafY = this.y + Math.sin(angle) * this.size * 0.8;
+                    ctx.beginPath();
+                    ctx.arc(leafX, leafY, this.size / 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+        
+        class Animal {
+            constructor(x, y, energy, speed, size, sense, color, genome) {
+                this.x = x;
+                this.y = y;
+                this.energy = energy;
+                this.maxEnergy = 100;
+                this.speed = speed;
+                this.size = size;
+                this.sense = sense; // Радиус восприятия
+                this.color = color;
+                this.direction = Math.random() * Math.PI * 2;
+                this.age = 0;
+                this.genome = genome || this.generateRandomGenome();
+                this.target = null;
+                this.reproductionThreshold = 80;
+                this.lastReproduction = 0;
+            }
+            
+            generateRandomGenome() {
+                return [
+                    Math.random() * 2 + 0.5,   // скорость
+                    Math.random() * 4 + 6,     // Размер
+                    Math.random() * 50 + 50,   // Восприятие
+                    Math.random() * 0.5 + 0.5  // Энерго эфективность
+                ];
+            }
+            
+            mutateGenome(genome) {
+                const mutationRate = mutationRateSlider.value / 100;
+                const mutated = [...genome];
+                
+                for (let i = 0; i < mutated.length; i++) {
+                    if (Math.random() < mutationRate) {
+                        // Мутация
+                        mutated[i] += (Math.random() - 0.5) * 0.4 * mutated[i];
+                        
+                        // Ограничения на значения генов
+                        if (i === GENES.SPEED) mutated[i] = Math.max(0.5, Math.min(3, mutated[i]));
+                        if (i === GENES.SIZE) mutated[i] = Math.max(4, Math.min(15, mutated[i]));
+                        if (i === GENES.SENSE) mutated[i] = Math.max(30, Math.min(150, mutated[i]));
+                        if (i === GENES.ENERGY_EFFICIENCY) mutated[i] = Math.max(0.3, Math.min(1.5, mutated[i]));
+                    }
+                }
+                
+                return mutated;
+            }
+            
+            update() {
+                this.age++;
+                this.lastReproduction++;
+                
+                // Метаболизм
+                const energyCost = 0.1 * (this.speed * 0.5 + this.size * 0.1) / this.genome[GENES.ENERGY_EFFICIENCY];
+                this.energy -= energyCost;
+                
+                // Влияние сезона на энергопотребление
+                if (season === 3) this.energy -= 0.05;
+                
+                // Смерть от голода
+                if (this.energy <= 0) {
+                    this.die();
+                    return;
+                }
+                
+                // Поиск хавчика
+                if (!this.target || this.target.energy <= 0) {
+                    this.findTarget();
+                }
+                
+                // Движение к хавчику
+                if (this.target) {
+                    const dx = this.target.x - this.x;
+                    const dy = this.target.y - this.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < this.size + (this.target.size || 5)) {
+                        this.interactWithTarget();
+                        this.target = null;
+                    } else {
+                        this.direction = Math.atan2(dy, dx);
+                        this.x += Math.cos(this.direction) * this.speed;
+                        this.y += Math.sin(this.direction) * this.speed;
+                    }
+                } else {
+                    // Патрулирование
+                    this.direction += (Math.random() - 0.5) * 0.5;
+                    this.x += Math.cos(this.direction) * this.speed * 0.3;
+                    this.y += Math.sin(this.direction) * this.speed * 0.3;
+                }
+                
+                // Границыв мира
+                this.x = Math.max(this.size, Math.min(canvas.width - this.size, this.x));
+                this.y = Math.max(this.size, Math.min(canvas.height - this.size, this.y));
+                
+                // Размножение
+                if (this.energy > this.reproductionThreshold && 
+                    this.lastReproduction > 100 && 
+                    Math.random() < 0.005) {
+                    this.reproduce();
+                }
+            }
+            
+            die() {
+
+            }
+            reproduce() {
+            }
+            
+            draw() {
+                // Тело
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Глаза
+                ctx.fillStyle = 'black';
+                ctx.beginPath();
+                ctx.arc(
+                    this.x + Math.cos(this.direction) * this.size * 0.6, 
+                    this.y + Math.sin(this.direction) * this.size * 0.6, 
+                    this.size / 3, 0, Math.PI * 2
+                );
+                ctx.fill();
+                
+                // Направление взгляда
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y);
+                ctx.lineTo(
+                    this.x + Math.cos(this.direction) * this.size * 1.5,
+                    this.y + Math.sin(this.direction) * this.size * 1.5
+                );
+                ctx.stroke();
+                
+                // Здоровье
+                const energyPercent = this.energy / this.maxEnergy;
+                ctx.fillStyle = energyPercent > 0.5 ? '#2ecc71' : energyPercent > 0.2 ? '#f39c12' : '#e74c3c';
+                ctx.fillRect(
+                    this.x - this.size, 
+                    this.y - this.size - 8, 
+                    this.size * 2 * energyPercent, 
+                    3
+                );
+            }
+        }
+        
+        class Herbivore extends Animal {
+            constructor(x, y, energy = 100, genome = null) {
+                const speed = genome ? genome[GENES.SPEED] : Math.random() * 1 + 0.8;
+                const size = genome ? genome[GENES.SIZE] : Math.random() * 3 + 7;
+                const sense = genome ? genome[GENES.SENSE] : Math.random() * 40 + 60;
+                super(x, y, energy, speed, size, sense, '#f39c12', genome);
+            }
+            
+            findTarget() {
+                let closestPlant = null;
+                let closestDistance = Infinity;
+                
+                for (const plant of plants) {
+                    const dx = plant.x - this.x;
+                    const dy = plant.y - this.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < this.sense && distance < closestDistance) {
+                        closestDistance = distance;
+                        closestPlant = plant;
+                    }
+                }
+                
+                this.target = closestPlant;
+            }
+            
+            interactWithTarget() {
+                // Хрумкаем растение
+                const energyGain = this.target.energy * 0.7;
+                this.energy += energyGain;
+                if (this.energy > this.maxEnergy) this.energy = this.maxEnergy;
+                
+                // Удаляем растение
+                const plantIndex = plants.indexOf(this.target);
+                if (plantIndex !== -1) {
+                    plants.splice(plantIndex, 1);
+                    addLogEntry("Травоядное съело растение", "herbivore");
+                }
+            }
+            
+            die() {
+                const index = herbivores.indexOf(this);
+                if (index !== -1) {
+                    herbivores.splice(index, 1);
+                    addLogEntry("Травоядное умерло", "death");
+                }
+            }
+            
+            reproduce() {
+                this.energy /= 2;
+                this.lastReproduction = 0;
+                
+                // Рождение придурка с мутациями
+                const childGenome = this.mutateGenome(this.genome);
+                
+                herbivores.push(new Herbivore(
+                    this.x + (Math.random() * 30 - 15),
+                    this.y + (Math.random() * 30 - 15),
+                    50,
+                    childGenome
+                ));
+                
+                addLogEntry("Родился новый травоядный", "reproduction");
+                generation++;
+            }
+            
+            draw() {
+                super.draw();
+                
+                // Рога
+                ctx.strokeStyle = '#8b4513';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(this.x + this.size * 0.5, this.y - this.size * 0.5);
+                ctx.lineTo(this.x + this.size * 0.8, this.y - this.size * 1.2);
+                ctx.moveTo(this.x - this.size * 0.5, this.y - this.size * 0.5);
+                ctx.lineTo(this.x - this.size * 0.8, this.y - this.size * 1.2);
+                ctx.stroke();
+            }
+        }
+        
+        class Predator extends Animal {
+            constructor(x, y, energy = 100, genome = null) {
+                const speed = genome ? genome[GENES.SPEED] : Math.random() * 0.5 + 1.2;
+                const size = genome ? genome[GENES.SIZE] : Math.random() * 3 + 9;
+                const sense = genome ? genome[GENES.SENSE] : Math.random() * 50 + 70;
+                super(x, y, energy, speed, size, sense, '#e74c3c', genome);
+            }
+            
+            findTarget() {
+                let closestHerbivore = null;
+                let closestDistance = Infinity;
+                
+                for (const herbivore of herbivores) {
+                    const dx = herbivore.x - this.x;
+                    const dy = herbivore.y - this.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < this.sense && distance < closestDistance) {
+                        closestDistance = distance;
+                        closestHerbivore = herbivore;
+                    }
+                }
+                
+                this.target = closestHerbivore;
+            }
+            
+            interactWithTarget() {
+                // Хрумкаем придурка
+                const energyGain = this.target.energy * 0.8;
+                this.energy += energyGain;
+                if (this.energy > this.maxEnergy) this.energy = this.maxEnergy;
+                
+                // Удаляем придурка
+                const herbivoreIndex = herbivores.indexOf(this.target);
+                if (herbivoreIndex !== -1) {
+                    herbivores.splice(herbivoreIndex, 1);
+                    addLogEntry("Хищник съел травоядного", "predator");
+                }
+            }
+            
+            die() {
+                const index = predators.indexOf(this);
+                if (index !== -1) {
+                    predators.splice(index, 1);
+                    addLogEntry("Хищник умер", "death");
+                }
+            }
+            
+            reproduce() {
+                this.energy /= 2;
+                this.lastReproduction = 0;
+                
+                // Рождение полупокера с мутациями
+                const childGenome = this.mutateGenome(this.genome);
+                
+                predators.push(new Predator(
+                    this.x + (Math.random() * 30 - 15),
+                    this.y + (Math.random() * 30 - 15),
+                    50,
+                    childGenome
+                ));
+                
+                addLogEntry("Родился новый хищник", "reproduction");
+                generation++;
+            }
+            
+            draw() {
+                super.draw();
+                
+                // Зубы
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.moveTo(this.x + this.size * 0.3, this.y - this.size * 0.2);
+                ctx.lineTo(this.x + this.size * 0.6, this.y - this.size * 0.1);
+                ctx.lineTo(this.x + this.size * 0.5, this.y + this.size * 0.2);
+                ctx.closePath();
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.moveTo(this.x - this.size * 0.3, this.y - this.size * 0.2);
+                ctx.lineTo(this.x - this.size * 0.6, this.y - this.size * 0.1);
+                ctx.lineTo(this.x - this.size * 0.5, this.y + this.size * 0.2);
+                ctx.closePath();
+                ctx.fill();
+            }
+        }
+        
+        // Массивы сущностей
+        let plants = [];
+        let herbivores = [];
+        let predators = [];
+        
+        // Отслеживемые переменные
+        let previousPlants = 0;
+        let previousHerbivores = 0;
+        let previousPredators = 0;
+        
+        // Глобальные мультипликаторы
+        let plantGrowthMultiplier = 5;
+        
+        // Инициализация симуляции
+        function initializeSimulation() {
+            plants = [];
+            herbivores = [];
+            predators = [];
+            simulationTime = 0;
+            generation = 0;
+            season = 0;
+            seasonProgress = 0;
+            
+            // Сброс данных графиков
+            populationData.plants = [];
+            populationData.herbivores = [];
+            populationData.predators = [];
+            populationData.time = [];
+            
+            traitsData.herbivoreSpeed = [];
+            traitsData.herbivoreSize = [];
+            traitsData.predatorSpeed = [];
+            traitsData.predatorSize = [];
+            traitsData.time = [];
+            
+            // Первые растения
+            for (let i = 0; i < initialPlantsSlider.value; i++) {
+                plants.push(new Plant(
+                    Math.random() * (canvas.width - 40) + 20,
+                    Math.random() * (canvas.height - 40) + 20
+                ));
+            }
+            
+            // Первые травоядные
+            for (let i = 0; i < initialHerbivoresSlider.value; i++) {
+                herbivores.push(new Herbivore(
+                    Math.random() * (canvas.width - 40) + 20,
+                    Math.random() * (canvas.height - 40) + 20
+                ));
+            }
+            
+            // Первые хищники
+            for (let i = 0; i < initialPredatorsSlider.value; i++) {
+                predators.push(new Predator(
+                    Math.random() * (canvas.width - 40) + 20,
+                    Math.random() * (canvas.height - 40) + 20
+                ));
+            }
+            
+            updateStats();
+            addLogEntry("Симуляция инициализирована", "info");
+        }
+        
+        // Обнова статистики
+        function updateStats() {
+            plantsCountElem.textContent = plants.length;
+            herbivoresCountElem.textContent = herbivores.length;
+            predatorsCountElem.textContent = predators.length;
+            generationCountElem.textContent = generation;
+            
+            // Обнова трендов
+            plantsTrendElem.textContent = getTrendText(plants.length, previousPlants);
+            herbivoresTrendElem.textContent = getTrendText(herbivores.length, previousHerbivores);
+            predatorsTrendElem.textContent = getTrendText(predators.length, previousPredators);
+            
+            previousPlants = plants.length;
+            previousHerbivores = herbivores.length;
+            previousPredators = predators.length;
+            
+            // Обнова сезона
+            const seasonNames = ["Весна", "Лето", "Осень", "Зима"];
+            seasonTextElem.textContent = seasonNames[season];
+            
+            // Обнова данных для графиков
+            if (simulationTime % 10 === 0) {
+                populationData.plants.push(plants.length);
+                populationData.herbivores.push(herbivores.length);
+                populationData.predators.push(predators.length);
+                populationData.time.push(simulationTime);
+                
+                // Расчет средних характеристик
+                let avgHerbivoreSpeed = 0, avgHerbivoreSize = 0;
+                let avgPredatorSpeed = 0, avgPredatorSize = 0;
+                
+                if (herbivores.length > 0) {
+                    for (const herbivore of herbivores) {
+                        avgHerbivoreSpeed += herbivore.speed;
+                        avgHerbivoreSize += herbivore.size;
+                    }
+                    avgHerbivoreSpeed /= herbivores.length;
+                    avgHerbivoreSize /= herbivores.length;
+                }
+                
+                if (predators.length > 0) {
+                    for (const predator of predators) {
+                        avgPredatorSpeed += predator.speed;
+                        avgPredatorSize += predator.size;
+                    }
+                    avgPredatorSpeed /= predators.length;
+                    avgPredatorSize /= predators.length;
+                }
+                
+                traitsData.herbivoreSpeed.push(avgHerbivoreSpeed);
+                traitsData.herbivoreSize.push(avgHerbivoreSize);
+                traitsData.predatorSpeed.push(avgPredatorSpeed);
+                traitsData.predatorSize.push(avgPredatorSize);
+                traitsData.time.push(simulationTime);
+                
+                // Ограничение длины данных для графиков
+                if (populationData.time.length > 100) {
+                    populationData.plants.shift();
+                    populationData.herbivores.shift();
+                    populationData.predators.shift();
+                    populationData.time.shift();
+                    
+                    traitsData.herbivoreSpeed.shift();
+                    traitsData.herbivoreSize.shift();
+                    traitsData.predatorSpeed.shift();
+                    traitsData.predatorSize.shift();
+                    traitsData.time.shift();
+                }
+                
+                drawCharts();
+            }
+        }
+        
+        // Функция для определения тренда
+        function getTrendText(current, previous) {
+            if (current > previous) return "↑ Растет";
+            if (current < previous) return "↓ Падает";
+            return "→ Стабильно";
+        }
+        
+        // Добавление записи в журнал
+        function addLogEntry(message, type = "info") {
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            
+            let icon = "ℹ";
+            if (type === "plant") icon = "🌱";
+            else if (type === "herbivore") icon = "🐑";
+            else if (type === "predator") icon = "🐺";
+            else if (type === "reproduction") icon = "👶";
+            else if (type === "death") icon = "💀";
+            else if (type === "disaster") icon = "🌪";
+            
+            logEntry.innerHTML = `<span class="time-badge">T+${Math.floor(simulationTime)}</span> ${icon} ${message}`;
+            eventLog.appendChild(logEntry);
+            
+            // Автопрокрутка к последнему сообщению
+            eventLog.scrollTop = eventLog.scrollHeight;
+            
+            // Ограничение количества записей в журнале
+            if (eventLog.children.length > 20) {
+                eventLog.removeChild(eventLog.firstChild);
+            }
+        }
+        
+        // Отрисовка графиков
+        function drawCharts() {
+            // График популяций
+            populationCtx.clearRect(0, 0, populationCtx.canvas.width, populationCtx.canvas.height);
+            
+            if (populationData.time.length < 2) return;
+            
+            const width = populationCtx.canvas.width;
+            const height = populationCtx.canvas.height;
+            const padding = 20;
+            
+            // Находим максимальное значение для масштабирования
+            const maxPopulation = Math.max(
+                ...populationData.plants,
+                ...populationData.herbivores,
+                ...populationData.predators
+            );
+            
+            // Фон
+            populationCtx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            populationCtx.fillRect(0, 0, width, height);
+            
+            // Сетка
+            populationCtx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            populationCtx.lineWidth = 1;
+            for (let i = 0; i <= 5; i++) {
+                const y = padding + (height - padding * 2) * (i / 5);
+                populationCtx.beginPath();
+                populationCtx.moveTo(padding, y);
+                populationCtx.lineTo(width - padding, y);
+                populationCtx.stroke();
+                
+                // Подписи значений
+                populationCtx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                populationCtx.font = '10px Arial';
+                populationCtx.fillText(Math.round(maxPopulation * (1 - i/5)), 5, y + 3);
+            }
+            
+            // Функция для отрисовки линии
+            function drawLine(data, color) {
+                populationCtx.strokeStyle = color;
+                populationCtx.lineWidth = 2;
+                populationCtx.beginPath();
+                
+                for (let i = 0; i < data.length; i++) {
+                    const x = padding + (width - padding * 2) * (i / (data.length - 1));
+                    const y = height - padding - (data[i] / maxPopulation) * (height - padding * 2);
+                    
+                    if (i === 0) {
+                        populationCtx.moveTo(x, y);
+                    } else {
+                        populationCtx.lineTo(x, y);
+                    }
+                }
+                
+                populationCtx.stroke();
+            }
+            
+            // Отрисовка линий
+            drawLine(populationData.plants, '#27ae60');
+            drawLine(populationData.herbivores, '#f39c12');
+            drawLine(populationData.predators, '#e74c3c');
+            
+            // График характеристик
+            traitsCtx.clearRect(0, 0, traitsCtx.canvas.width, traitsCtx.canvas.height);
+            
+            const tWidth = traitsCtx.canvas.width;
+            const tHeight = traitsCtx.canvas.height;
+            
+            // Фон
+            traitsCtx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            traitsCtx.fillRect(0, 0, tWidth, tHeight);
+            
+            // Находим максимальное значение для масштабирования
+            const maxTrait = Math.max(
+                ...traitsData.herbivoreSpeed,
+                ...traitsData.herbivoreSize,
+                ...traitsData.predatorSpeed,
+                ...traitsData.predatorSize
+            );
+            
+            // Сетка
+            traitsCtx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            traitsCtx.lineWidth = 1;
+            for (let i = 0; i <= 5; i++) {
+                const y = padding + (tHeight - padding * 2) * (i / 5);
+                traitsCtx.beginPath();
+                traitsCtx.moveTo(padding, y);
+                traitsCtx.lineTo(tWidth - padding, y);
+                traitsCtx.stroke();
+                
+                // Подписи значений
+                traitsCtx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                traitsCtx.font = '10px Arial';
+                traitsCtx.fillText((maxTrait * (1 - i/5)).toFixed(1), 5, y + 3);
+            }
+            
+            // Отрисовка линий характеристик
+            drawLine(traitsData.herbivoreSpeed, '#f39c12');
+            drawLine(traitsData.herbivoreSize, '#d35400');
+            drawLine(traitsData.predatorSpeed, '#e74c3c');
+            drawLine(traitsData.predatorSize, '#c0392b');
+            
+            // Легенда для графиков характеристик
+            traitsCtx.fillStyle = '#f39c12';
+            traitsCtx.fillText('Скорость травоядных', tWidth - 150, 15);
+            traitsCtx.fillStyle = '#d35400';
+            traitsCtx.fillText('Размер травоядных', tWidth - 150, 30);
+            traitsCtx.fillStyle = '#e74c3c';
+            traitsCtx.fillText('Скорость хищников', tWidth - 150, 45);
+            traitsCtx.fillStyle = '#c0392b';
+            traitsCtx.fillText('Размер хищников', tWidth - 150, 60);
+        }
+        
+        // Природные катастрофы
+        function simulateNaturalDisaster() {
+            if (Math.random() < disasterFrequencySlider.value / 1000) {
+                const disasterType = Math.floor(Math.random() * 3);
+                
+                switch(disasterType) {
+                    case 0: // Засуха
+                        const plantsToRemove = Math.floor(plants.length * 0.3);
+                        for (let i = 0; i < plantsToRemove; i++) {
+                            if (plants.length > 0) {
+                                plants.splice(Math.floor(Math.random() * plants.length), 1);
+                            }
+                        }
+                        addLogEntry("Засуха уничтожила часть растений", "disaster");
+                        break;
+                        
+                    case 1: // Эпидемия
+                        const herbivoresToRemove = Math.floor(herbivores.length * 0.2);
+                        for (let i = 0; i < herbivoresToRemove; i++) {
+                            if (herbivores.length > 0) {
+                                herbivores.splice(Math.floor(Math.random() * herbivores.length), 1);
+                            }
+                        }
+                        addLogEntry("Эпидемия поразила травоядных", "disaster");
+                        break;
+                        
+                    case 2: // Наводнение
+                        const allEntities = [...plants, ...herbivores, ...predators];
+                        const entitiesToRemove = Math.floor(allEntities.length * 0.15);
+                        for (let i = 0; i < entitiesToRemove; i++) {
+                            if (allEntities.length > 0) {
+                                const entity = allEntities[Math.floor(Math.random() * allEntities.length)];
+                                const plantIndex = plants.indexOf(entity);
+                                const herbivoreIndex = herbivores.indexOf(entity);
+                                const predatorIndex = predators.indexOf(entity);
+                                
+                                if (plantIndex !== -1) plants.splice(plantIndex, 1);
+                                if (herbivoreIndex !== -1) herbivores.splice(herbivoreIndex, 1);
+                                if (predatorIndex !== -1) predators.splice(predatorIndex, 1);
+                            }
+                        }
+                        addLogEntry("Наводнение унесло жизни многих организмов", "disaster");
+                        break;
+                }
+            }
+        }
+        
+        // Основной цикл симуляции
+        function simulate() {
+            if (!simulationRunning) return;
+            
+            // Очистка холста
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Рисование фона (земли) с учетом сезона
+            let groundColor = '#1a3c27'; // Весна
+            if (season === 1) groundColor = '#2a5c3a'; // Лето
+            else if (season === 2) groundColor = '#5c3a1a'; // Осень
+            else if (season === 3) groundColor = '#2a3c5c'; // Зима
+            
+            ctx.fillStyle = groundColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Рисование деталей фона (травы, снега и т.д.)
+            ctx.fillStyle = season === 3 ? '#e0f7fa' : '#27ae60';
+            for (let i = 0; i < 200; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                if (season === 3) {
+                    // Снежинки зимой
+                    ctx.beginPath();
+                    ctx.arc(x, y, 1 + Math.random() * 2, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    // Трава в другие сезоны
+                    ctx.fillRect(x, y, 1, 3 + Math.random() * 5);
+                }
+            }
+            
+            // Обновление и отрисовка растений
+            for (const plant of plants) {
+                plant.update();
+                plant.draw();
+            }
+            
+            // Обновление и отрисовка травоядных
+            for (const herbivore of herbivores) {
+                herbivore.update();
+                herbivore.draw();
+            }
+            
+            // Обновление и отрисовка хищников
+            for (const predator of predators) {
+                predator.update();
+                predator.draw();
+            }
+            
+            // Иногда добавляем новые растения для поддержания экосистемы
+            if (Math.random() < 0.02 && plants.length < 200) {
+                plants.push(new Plant(
+                    Math.random() * (canvas.width - 40) + 20,
+                    Math.random() * (canvas.height - 40) + 20,
+                    30
+                ));
+            }
+            
+            // Обновление сезонов
+            seasonProgress++;
+            if (seasonProgress > seasonLengthSlider.value) {
+                seasonProgress = 0;
+                season = (season + 1) % 4;
+                addLogEntry(`Наступила ${['весна', 'лето', 'осень', 'зима'][season]}`, "info");
+            }
+            
+            // Моделирование природных катастроф
+            simulateNaturalDisaster();
+            
+            // Обновление времени и статистики
+            simulationTime += 1;
+            updateStats();
+            
+            // Проверка условий завершения симуляции
+            if (herbivores.length === 0 && predators.length === 0) {
+                addLogEntry("Экосистема коллапсировала! Все животные вымерли.", "death");
+                simulationRunning = false;
+                startBtn.textContent = "Старт";
+            }
+            
+            // Рекурсивный вызов с учетом скорости симуляции
+            setTimeout(simulate, 100 - (speedSlider.value * 9));
+        }
+        
+        // Обработчики событий для кнопок
+        startBtn.addEventListener('click', () => {
+            if (!simulationRunning) {
+                simulationRunning = true;
+                startBtn.innerHTML = '<span>▶</span> Продолжить';
+                simulate();
+                addLogEntry("Симуляция запущена", "info");
+            }
+        });
+        
+        pauseBtn.addEventListener('click', () => {
+            simulationRunning = false;
+            startBtn.innerHTML = '<span>▶</span> Продолжить';
+            addLogEntry("Симуляция приостановлена", "info");
+        });
+        
+        resetBtn.addEventListener('click', () => {
+            simulationRunning = false;
+            startBtn.innerHTML = '<span>▶</span> Старт';
+            initializeSimulation();
+            addLogEntry("Симуляция сброшена", "info");
+        });
+        
+        // Обработчики для слайдеров
+        const sliders = [
+            speedSlider, mutationRateSlider, initialPlantsSlider, 
+            initialHerbivoresSlider, initialPredatorsSlider, 
+            seasonLengthSlider, disasterFrequencySlider
+        ];
+        
+        sliders.forEach(slider => {
+            slider.addEventListener('input', function() {
+                const valueDisplay = this.parentNode.querySelector('.value-display');
+                if (valueDisplay) {
+                    if (this === speedSlider) {
+                        const speeds = ["Очень медленно", "Медленно", "Умеренно", "Быстро", "Очень быстро"];
+                        valueDisplay.textContent = speeds[Math.floor(this.value / 2)];
+                    } else if (this === mutationRateSlider) {
+                        const rates = ["Очень низкая", "Низкая", "Средняя", "Высокая", "Очень высокая"];
+                        valueDisplay.textContent = rates[Math.floor(this.value / 2)];
+                    } else if (this === disasterFrequencySlider) {
+                        const frequencies = ["Очень редко", "Редко", "Иногда", "Часто", "Очень часто"];
+                        valueDisplay.textContent = frequencies[Math.floor(this.value / 2)];
+                    } else {
+                        valueDisplay.textContent = this.value;
+                    }
+                }
+                
+                // Обновление глобальных мультипликаторов
+                if (this.id === 'plantGrowthSlider') {
+                    plantGrowthMultiplier = this.value;
+                }
+            });
+        });
+        
+        // Обработчик для подсказок при наведении на canvas
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            let tooltipText = '';
+            
+            // Проверяем, находится ли курсор над каким-либо объектом
+            for (const plant of plants) {
+                const dx = plant.x - x;
+                const dy = plant.y - y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < plant.size) {
+                    tooltipText = `Растение | Энергия: ${Math.round(plant.energy)} | Возраст: ${plant.age}`;
+                    break;
+                }
+            }
+            
+            for (const herbivore of herbivores) {
+                const dx = herbivore.x - x;
+                const dy = herbivore.y - y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < herbivore.size) {
+                    tooltipText = `Травоядное | Энергия: ${Math.round(herbivore.energy)} | Скорость: ${herbivore.speed.toFixed(2)} | Размер: ${herbivore.size.toFixed(1)}`;
+                    break;
+                }
+            }
+            
+            for (const predator of predators) {
+                const dx = predator.x - x;
+                const dy = predator.y - y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < predator.size) {
+                    tooltipText = `Хищник | Энергия: ${Math.round(predator.energy)} | Скорость: ${predator.speed.toFixed(2)} | Размер: ${predator.size.toFixed(1)}`;
+                    break;
+                }
+            }
+            
+            if (tooltipText) {
+                tooltip.textContent = tooltipText;
+                tooltip.style.left = (e.pageX + 10) + 'px';
+                tooltip.style.top = (e.pageY + 10) + 'px';
+                tooltip.style.opacity = 1;
+            } else {
+                tooltip.style.opacity = 0;
+            }
+        });
+        
+        canvas.addEventListener('mouseout', () => {
+            tooltip.style.opacity = 0;
+        });
+        
+        // Инициализация при загрузке страницы
+        window.addEventListener('load', () => {
+            initializeSimulation();
+            drawCharts();
+        });
+        
+        // Обработка изменения размера окна
+        window.addEventListener('resize', () => {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            drawCharts();
+        });
+    </script>
+</body>
+</html>
